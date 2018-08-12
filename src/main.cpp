@@ -25,7 +25,7 @@ void loadOpenGL()
 
 // Shader sources
 const GLchar* vertexSource =
-"#version 300 es\n"
+    "#version 300 es\n"
     "in vec4 position;    \n"
     "void main()                  \n"
     "{                            \n"
@@ -33,7 +33,7 @@ const GLchar* vertexSource =
     "}                            \n";
 
 const GLchar* fragmentSource =
-"#version 300 es\n"
+    "#version 300 es\n"
     "precision mediump float;\n"
     "out vec4 color;\n"
     "void main()                                  \n"
