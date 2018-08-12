@@ -19,7 +19,7 @@ set-g++:
 	
 set-wasm:
 	$(eval LDFLAGS := -O3)
-	$(eval TARGETFLAGS := -s DISABLE_EXCEPTION_CATCHING=0 -s USE_WEBGL2=1 -s WASM=1 -s NO_EXIT_RUNTIME=1 -s USE_SDL=2)
+	$(eval TARGETFLAGS := -s DISABLE_EXCEPTION_CATCHING=0 -s USE_WEBGL2=1 -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s SAFE_HEAP=1 -s USE_SDL=2)
 	$(eval CXX := em++)
 	$(eval CXXFLAGS := -std=c++14 $(LDFLAGS) $(TARGETFLAGS))
 	$(eval TARGET := wasm)
