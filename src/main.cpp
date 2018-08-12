@@ -19,23 +19,17 @@
 #ifdef __EMSCRIPTEN__
     namespace emscripten
     {
-        namespace details
+        using LoopPtr = void(*)(void*);
+
+        template<typename TLambda>
+        LoopPtr getLoopPtr(const TLambda&)
         {
-            template<typename TReturn, typename TLambda>
-            constexpr TReturn executeLambda(TLambda* v)
+            static LoopPtr executor = [](void* lambda)
             {
-                return static_cast<TReturn>((*v)());
-            }
-        }
+                (*static_cast<TLambda*>(lambda))();
+            };
 
-        template<typename TReturn = void>
-        using LambdaPtr = TReturn(*)(void*);
-
-        template<typename TReturn = void, typename TLambda>
-        constexpr LambdaPtr<TReturn> getLoopPtr(const TLambda& lambda)
-        {
-            return reinterpret_cast<LambdaPtr<TReturn>>(
-                details::executeLambda<TReturn, TLambda>); // address of the specialized executor
+            return executor;
         }
     }
 #endif
