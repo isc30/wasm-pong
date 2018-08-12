@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "webgl2-triangle", "webgl2-triangle.vcxproj", "{9DAC8DCE-D171-43BC-B620-BF689932CCEA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "webgl2-sdl2-mixed-rendering", "webgl2-sdl2-mixed-rendering.vcxproj", "{9DAC8DCE-D171-43BC-B620-BF689932CCEA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

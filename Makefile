@@ -1,4 +1,4 @@
-PROJECT_NAME = webgl2-triangle
+PROJECT_NAME = webgl2-sdl2-mixed-rendering
 
 SRC_DIR = ./src
 BUILD_DIR = ./build

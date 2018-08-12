@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{9DAC8DCE-D171-43BC-B620-BF689932CCEA}</ProjectGuid>
-    <RootNamespace>webgl2triangle</RootNamespace>
+    <RootNamespace>webgl2sdl2mixedrendering</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
