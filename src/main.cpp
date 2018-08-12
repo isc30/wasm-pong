@@ -16,8 +16,29 @@
 
 #include <SDL.h>
 
-std::function<bool()> loop;
-void main_loop() { loop(); }
+#ifdef __EMSCRIPTEN__
+    namespace emscripten
+    {
+        namespace details
+        {
+            template<typename TReturn, typename TLambda>
+            constexpr TReturn executeLambda(TLambda* v)
+            {
+                return static_cast<TReturn>((*v)());
+            }
+        }
+
+        template<typename TReturn = void>
+        using LambdaPtr = TReturn(*)(void*);
+
+        template<typename TReturn = void, typename TLambda>
+        constexpr LambdaPtr<TReturn> getLoopPtr(const TLambda& lambda)
+        {
+            return reinterpret_cast<LambdaPtr<TReturn>>(
+                details::executeLambda<TReturn, TLambda>); // address of the specialized executor
+        }
+    }
+#endif
 
 void loadOpenGL()
 {
@@ -32,7 +53,7 @@ void printContext()
     std::cout << "[Vendor] " << glGetString(GL_VENDOR) << std::endl;
     std::cout << "[3D Renderer] " << glGetString(GL_RENDERER) << std::endl;
     std::cout << "[GLSL] " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-    //std::cout << " [Extensions] " << glGetString(GL_EXTENSIONS) << std::endl;
+    //std::cout << "[Extensions] " << glGetString(GL_EXTENSIONS) << std::endl;
 }
 
 struct renderable
@@ -287,7 +308,7 @@ int main(int argc, char** argv)
     renderable quad = prepareQuad();
     renderable triangle = prepareTriangle();
 
-    loop = [&]
+    const auto loop = [&]()
     {
         SDL_Event e;
         while (SDL_PollEvent(&e))
@@ -297,6 +318,14 @@ int main(int argc, char** argv)
                 case SDL_QUIT:
                 {
                     return false;
+                }
+
+                case SDL_KEYDOWN:
+                {
+                    if (e.key.keysym.sym == SDLK_ESCAPE)
+                    {
+                        return false;
+                    }
                 }
 
                 case SDL_MOUSEMOTION:
@@ -339,13 +368,32 @@ int main(int argc, char** argv)
         return true;
     };
 
-#ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(main_loop, 0, true);
-#else
-    while(true) main_loop();
-#endif
+    const auto onExit = [&]()
+    {
+        SDL_Quit();
 
-    std::cout << "end";
+        std::cout << "end" << std::endl;
+    };
+
+#ifdef __EMSCRIPTEN__
+
+    auto emscriptenLoop = [&]()
+    {
+        if (!loop())
+        {
+            emscripten_cancel_main_loop();
+            onExit();
+        }
+    };
+
+    emscripten_set_main_loop_arg(
+        emscripten::getLoopPtr(emscriptenLoop),
+        &emscriptenLoop,
+        0, true);
+
+#else
+    while (loop()); onExit();
+#endif
 
     return 0;
 }
