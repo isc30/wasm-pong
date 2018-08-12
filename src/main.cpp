@@ -16,17 +16,15 @@
 
 #include <SDL.h>
 
+std::function<bool()> loop;
+void main_loop() { loop(); }
+
 void loadOpenGL()
 {
 #ifndef __EMSCRIPTEN__
     gladLoadGLES2Loader(SDL_GL_GetProcAddress);
 #endif
 }
-
-// Shader sources
-
-std::function<bool()> loop;
-void main_loop() { loop(); }
 
 void printContext()
 {
@@ -37,12 +35,96 @@ void printContext()
     //std::cout << " [Extensions] " << glGetString(GL_EXTENSIONS) << std::endl;
 }
 
-GLuint quadVao;
-GLuint quadShader;
-GLuint quadVbo;
-
-void prepareQuad()
+struct renderable
 {
+    GLuint program;
+    GLuint vao, vbo;
+    GLsizei count;
+
+    void render() const
+    {
+        glUseProgram(program);
+            glBindVertexArrayOES(vao);
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                    glDrawArrays(GL_TRIANGLES, 0, 3 * count);
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindVertexArrayOES(0);
+        glUseProgram(0);
+    }
+};
+
+GLuint compileProgram(const char* vertexSource, const char* fragmentSource)
+{
+    // Create and compile the vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexSource, NULL);
+    glCompileShader(vertexShader);
+
+    GLint Result = GL_FALSE;
+    int InfoLogLength;
+
+    // Check Vertex Shader
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &Result);
+    glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
+    if (InfoLogLength > 1) {
+        std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
+        glGetShaderInfoLog(vertexShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
+        printf("vertex: %s\n", &VertexShaderErrorMessage[0]);
+    }
+
+    // Create and compile the fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+    glCompileShader(fragmentShader);
+
+    // Check Fragment Shader
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &Result);
+    glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
+    if (InfoLogLength > 1) {
+        std::vector<char> FragmentShaderErrorMessage(InfoLogLength + 1);
+        glGetShaderInfoLog(fragmentShader, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
+        printf("fragment: %s\n", &FragmentShaderErrorMessage[0]);
+    }
+
+    // Link the vertex and fragment shader into a shader program
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    // glBindFragDataLocation(shaderProgram, 0, "outColor");
+    glLinkProgram(program);
+
+    // Check the program
+    glGetProgramiv(program, GL_LINK_STATUS, &Result);
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &InfoLogLength);
+    if (InfoLogLength > 1) {
+        std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
+        glGetProgramInfoLog(program, InfoLogLength, NULL, &ProgramErrorMessage[0]);
+        printf("program: %s\n", &ProgramErrorMessage[0]);
+    }
+
+    return program;
+}
+
+renderable prepareQuad()
+{
+    renderable quad;
+
+    // Create Vertex Array Object
+    glGenVertexArraysOES(1, &quad.vao);
+    glBindVertexArrayOES(quad.vao);
+
+    // Create a Vertex Buffer Object and copy the vertex data to it
+    glGenBuffers(1, &quad.vbo);
+
+    GLfloat vertices[] = {
+        -1.f, -1.f, 1.f, -1.f, -1.f, 1.f,
+        -1.f, 1.f, 1.f, -1.f, 1.f, 1.f
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, quad.vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    quad.count = 2;
+
     const GLchar* vertexSource =
         "#version 300 es\n"
         "in vec2 position;    \n"
@@ -66,82 +148,33 @@ void prepareQuad()
         //"  color = vec4(1, 0, 0, 1);\n"
         "}                                            \n";
 
-    // Create Vertex Array Object
-    glGenVertexArraysOES(1, &quadVao);
-    glBindVertexArrayOES(quadVao);
-
-    // Create a Vertex Buffer Object and copy the vertex data to it
-    glGenBuffers(1, &quadVbo);
-
-    GLfloat vertices[] = {
-        -1.f, -1.f, 1.f, -1.f, -1.f, 1.f,
-        -1.f, 1.f, 1.f, -1.f, 1.f, 1.f
-    };
-
-    glBindBuffer(GL_ARRAY_BUFFER, quadVbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Create and compile the vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    glCompileShader(vertexShader);
-
-    GLint Result = GL_FALSE;
-    int InfoLogLength;
-
-    // Check Vertex Shader
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &Result);
-    glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
-        glGetShaderInfoLog(vertexShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-        printf("vertex: %s\n", &VertexShaderErrorMessage[0]);
-    }
-
-    // Create and compile the fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-    glCompileShader(fragmentShader);
-
-    // Check Fragment Shader
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &Result);
-    glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> FragmentShaderErrorMessage(InfoLogLength + 1);
-        glGetShaderInfoLog(fragmentShader, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
-        printf("fragment: %s\n", &FragmentShaderErrorMessage[0]);
-    }
-
-    // Link the vertex and fragment shader into a shader program
-    quadShader = glCreateProgram();
-    glAttachShader(quadShader, vertexShader);
-    glAttachShader(quadShader, fragmentShader);
-    // glBindFragDataLocation(shaderProgram, 0, "outColor");
-    glLinkProgram(quadShader);
-
-    // Check the program
-    glGetProgramiv(quadShader, GL_LINK_STATUS, &Result);
-    glGetProgramiv(quadShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
-        glGetProgramInfoLog(quadShader, InfoLogLength, NULL, &ProgramErrorMessage[0]);
-        printf("program: %s\n", &ProgramErrorMessage[0]);
-    }
-
-    glUseProgram(quadShader);
+    quad.program = compileProgram(vertexSource, fragmentSource);
 
     // Specify the layout of the vertex data
-    GLint posAttrib = glGetAttribLocation(quadShader, "position");
+    GLint posAttrib = glGetAttribLocation(quad.program, "position");
     glEnableVertexAttribArray(posAttrib);
     glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    return quad;
 }
 
-GLuint triangleVao;
-GLuint triangleVbo;
-GLuint triangleShader;
-
-void prepareTriangle()
+renderable prepareTriangle()
 {
+    renderable triangle;
+
+    // Create Vertex Array Object
+    glGenVertexArraysOES(1, &triangle.vao);
+    glBindVertexArrayOES(triangle.vao);
+
+    // Create a Vertex Buffer Object and copy the vertex data to it
+    glGenBuffers(1, &triangle.vbo);
+
+    GLfloat vertices[] = { 0.0f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f };
+
+    glBindBuffer(GL_ARRAY_BUFFER, triangle.vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    triangle.count = 1;
+
     const GLchar* vertexSource =
         "#version 300 es\n"
         "in vec2 position;    \n"
@@ -159,83 +192,25 @@ void prepareTriangle()
         "  color = vec4 (0.4, 0.8, 0.2, 1.0 );\n"
         "}                                            \n";
 
-    // Create Vertex Array Object
-    glGenVertexArraysOES(1, &triangleVao);
-    glBindVertexArrayOES(triangleVao);
-
-    // Create a Vertex Buffer Object and copy the vertex data to it
-    glGenBuffers(1, &triangleVbo);
-
-    GLfloat vertices[] = { 0.0f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f };
-
-    glBindBuffer(GL_ARRAY_BUFFER, triangleVbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Create and compile the vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    glCompileShader(vertexShader);
-
-    GLint Result = GL_FALSE;
-    int InfoLogLength;
-
-    // Check Vertex Shader
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &Result);
-    glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
-        glGetShaderInfoLog(vertexShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-        printf("vertex: %s\n", &VertexShaderErrorMessage[0]);
-    }
-
-    // Create and compile the fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-    glCompileShader(fragmentShader);
-
-    // Check Fragment Shader
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &Result);
-    glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> FragmentShaderErrorMessage(InfoLogLength + 1);
-        glGetShaderInfoLog(fragmentShader, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
-        printf("fragment: %s\n", &FragmentShaderErrorMessage[0]);
-    }
-
-    // Link the vertex and fragment shader into a shader program
-    triangleShader = glCreateProgram();
-    glAttachShader(triangleShader, vertexShader);
-    glAttachShader(triangleShader, fragmentShader);
-    // glBindFragDataLocation(shaderProgram, 0, "outColor");
-    glLinkProgram(triangleShader);
-
-    // Check the program
-    glGetProgramiv(triangleShader, GL_LINK_STATUS, &Result);
-    glGetProgramiv(triangleShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
-        glGetProgramInfoLog(triangleShader, InfoLogLength, NULL, &ProgramErrorMessage[0]);
-        printf("program: %s\n", &ProgramErrorMessage[0]);
-    }
-
-    glUseProgram(triangleShader);
+    triangle.program = compileProgram(vertexSource, fragmentSource);
 
     // Specify the layout of the vertex data
-    GLint posAttrib = glGetAttribLocation(triangleShader, "position");
+    GLint posAttrib = glGetAttribLocation(triangle.program, "position");
     glEnableVertexAttribArray(posAttrib);
     glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    return triangle;
 }
 
-void renderOpenglSurface(SDL_Surface* surface)
+void renderOpenglSurface(const renderable& renderable, SDL_Surface* surface)
 {
     GLuint TextureID = 0;
     glGenTextures(1, &TextureID);
     glBindTexture(GL_TEXTURE_2D, TextureID);
 
-    int Mode = GL_RGB;
-    if (surface->format->BytesPerPixel == 4) {
-        Mode = GL_RGBA;
-    }
+    int Mode = surface->format->BytesPerPixel == 4
+        ? GL_RGBA
+        : GL_RGB;
 
     glTexImage2D(GL_TEXTURE_2D, 0, Mode, surface->w, surface->h, 0, Mode, GL_UNSIGNED_BYTE, surface->pixels);
 
@@ -245,14 +220,7 @@ void renderOpenglSurface(SDL_Surface* surface)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, TextureID);
 
-    // QUAD
-    glUseProgram(quadShader);
-        glBindVertexArrayOES(quadVao);
-            glBindBuffer(GL_ARRAY_BUFFER, quadVbo);
-                glDrawArrays(GL_TRIANGLES, 0, 3 * 2);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArrayOES(0);
-    glUseProgram(0);
+    renderable.render(); // quad
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -261,15 +229,10 @@ void renderOpenglSurface(SDL_Surface* surface)
 
 int main(int argc, char** argv)
 {
-    /*if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
-    {
-        return -1;
-    }*/
-
     #define SCREEN_WIDTH 640
     #define SCREEN_HEIGHT 480
 
-    auto* window =
+    SDL_Window* window =
         SDL_CreateWindow("test", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
             SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
@@ -321,8 +284,8 @@ int main(int argc, char** argv)
 
     std::cout << "[2D Renderer] SDL2 " << rendererInfo.name << std::endl;
 
-    prepareQuad();
-    prepareTriangle();
+    renderable quad = prepareQuad();
+    renderable triangle = prepareTriangle();
 
     loop = [&]
     {
@@ -347,23 +310,16 @@ int main(int argc, char** argv)
             }
         }
 
-        /*screenSurface = SDL_GetWindowSurface(window);
-        SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xFF, 0x00, 0x00));
-        SDL_UpdateWindowSurface(window);*/
-
         // Clear the screen
         glClearColor(0.f, 0x33 / 255.f, 0x66 / 255.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Draw a triangle from the 3 vertices
-        glUseProgram(triangleShader);
-            glBindVertexArrayOES(triangleVao);
-                glBindBuffer(GL_ARRAY_BUFFER, triangleVbo);
-                    glDrawArrays(GL_TRIANGLES, 0, 3);
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-            glBindVertexArrayOES(0);
-        glUseProgram(0);
+        // 3D rendering
+        /////////////////////////////////////////////////////////////////////////////////////////
 
+        triangle.render();
+
+        // 2D rendering
         /////////////////////////////////////////////////////////////////////////////////////////
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0); // transparent overlay
@@ -375,8 +331,9 @@ int main(int argc, char** argv)
         SDL_SetRenderDrawColor(renderer, 255, 215, 0, 255);
         SDL_RenderDrawLine(renderer, 0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
 
-        renderOpenglSurface(surface);
+        renderOpenglSurface(quad, surface); // render 2D surface
 
+        // swap buffers
         SDL_GL_SwapWindow(window);
 
         return true;
