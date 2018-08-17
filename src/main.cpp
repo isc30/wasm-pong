@@ -5,16 +5,15 @@
 
 #ifdef __EMSCRIPTEN__
     #include <emscripten.h>
-
-    #define GL_GLEXT_PROTOTYPES 1
-    #include <SDL_opengles2.h>
-#endif
-
-#ifndef __EMSCRIPTEN__
-    #include <glad/glad.h> // OpenGL ES 3.0
 #endif
 
 #include <SDL.h>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include "opengl.hpp"
+
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 480
 
 #ifdef __EMSCRIPTEN__
     namespace emscripten
@@ -34,90 +33,28 @@
     }
 #endif
 
-void loadOpenGL()
+template<typename TGameLoop, typename TOnExit>
+int runGameLoop(const TGameLoop& loop, const TOnExit& onExit)
 {
-#ifndef __EMSCRIPTEN__
-    gladLoadGLES2Loader(SDL_GL_GetProcAddress);
-#endif
-}
-
-void printContext()
-{
-    std::cout << "[OpenGL] " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "[Vendor] " << glGetString(GL_VENDOR) << std::endl;
-    std::cout << "[3D Renderer] " << glGetString(GL_RENDERER) << std::endl;
-    std::cout << "[GLSL] " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-    //std::cout << "[Extensions] " << glGetString(GL_EXTENSIONS) << std::endl;
-}
-
-struct renderable
-{
-    GLuint program;
-    GLuint vao, vbo;
-    GLsizei count;
-
-    void render() const
+#ifdef __EMSCRIPTEN__
+    auto emscriptenLoop = [&]()
     {
-        glUseProgram(program);
-            glBindVertexArrayOES(vao);
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                    glDrawArrays(GL_TRIANGLES, 0, 3 * count);
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-            glBindVertexArrayOES(0);
-        glUseProgram(0);
-    }
-};
+        if (!loop())
+        {
+            emscripten_cancel_main_loop();
+            onExit();
+        }
+    };
 
-GLuint compileProgram(const char* vertexSource, const char* fragmentSource)
-{
-    // Create and compile the vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    glCompileShader(vertexShader);
+    emscripten_set_main_loop_arg(
+        emscripten::getLoopPtr(emscriptenLoop),
+        &emscriptenLoop,
+        0, true);
+#else
+    while (loop()); onExit();
+#endif
 
-    GLint Result = GL_FALSE;
-    int InfoLogLength;
-
-    // Check Vertex Shader
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &Result);
-    glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
-        glGetShaderInfoLog(vertexShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-        printf("vertex: %s\n", &VertexShaderErrorMessage[0]);
-    }
-
-    // Create and compile the fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-    glCompileShader(fragmentShader);
-
-    // Check Fragment Shader
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &Result);
-    glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> FragmentShaderErrorMessage(InfoLogLength + 1);
-        glGetShaderInfoLog(fragmentShader, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
-        printf("fragment: %s\n", &FragmentShaderErrorMessage[0]);
-    }
-
-    // Link the vertex and fragment shader into a shader program
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    // glBindFragDataLocation(shaderProgram, 0, "outColor");
-    glLinkProgram(program);
-
-    // Check the program
-    glGetProgramiv(program, GL_LINK_STATUS, &Result);
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    if (InfoLogLength > 1) {
-        std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
-        glGetProgramInfoLog(program, InfoLogLength, NULL, &ProgramErrorMessage[0]);
-        printf("program: %s\n", &ProgramErrorMessage[0]);
-    }
-
-    return program;
+    return 0;
 }
 
 renderable prepareQuad()
@@ -125,8 +62,8 @@ renderable prepareQuad()
     renderable quad;
 
     // Create Vertex Array Object
-    glGenVertexArraysOES(1, &quad.vao);
-    glBindVertexArrayOES(quad.vao);
+    glGenVertexArrays(1, &quad.vao);
+    glBindVertexArray(quad.vao);
 
     // Create a Vertex Buffer Object and copy the vertex data to it
     glGenBuffers(1, &quad.vbo);
@@ -138,32 +75,42 @@ renderable prepareQuad()
 
     glBindBuffer(GL_ARRAY_BUFFER, quad.vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
     quad.count = 2;
 
-    const GLchar* vertexSource =
-        "#version 300 es\n"
-        "in vec2 position;    \n"
-        "out vec2 UV;\n"
-        "void main()                  \n"
-        "{                            \n"
-        "   gl_Position = vec4(position.xy, 0.0, 1.0);  \n"
-        "   UV = (position.xy + vec2(1, 1)) / 2.0;\n"
-        "   UV.y = -UV.y;  \n" // SDL software used DirectX coordinate system
-        "}                            \n";
+    const GLchar* vertexSource = "#version 300 es\n" R"SHADER_END(
 
-    const GLchar* fragmentSource =
-        "#version 300 es\n"
-        "precision mediump float;\n"
-        "out vec4 color;\n"
-        "in vec2 UV;\n"
-        "uniform sampler2D myTextureSampler;\n"
-        "void main()                                  \n"
-        "{                                            \n"
-        "  color = texture( myTextureSampler, UV ).rgba;\n"
-        //"  color = vec4(1, 0, 0, 1);\n"
-        "}                                            \n";
+        in vec2 position;
+        out vec2 UV;
 
-    quad.program = compileProgram(vertexSource, fragmentSource);
+        void main()
+        {
+            UV = (position.xy + vec2(1, 1)) / 2.0;
+            UV.y = -UV.y; // SDL software uses DirectX coordinate system
+
+            gl_Position = vec4(position.xy, 0.0, 1.0);
+        }
+
+    )SHADER_END";
+
+    const GLchar* fragmentSource = "#version 300 es\n" R"SHADER_END(
+
+        precision mediump float;
+        out vec4 color;
+
+        in vec2 UV;
+        uniform sampler2D diffuseTexture;
+
+        void main()
+        {
+            color = texture(diffuseTexture, UV);
+        }
+
+    )SHADER_END";
+
+    quad.program = opengl::compileProgram(vertexSource, fragmentSource);
+
+    glUseProgram(quad.program);
 
     // Specify the layout of the vertex data
     GLint posAttrib = glGetAttribLocation(quad.program, "position");
@@ -178,8 +125,8 @@ renderable prepareTriangle()
     renderable triangle;
 
     // Create Vertex Array Object
-    glGenVertexArraysOES(1, &triangle.vao);
-    glBindVertexArrayOES(triangle.vao);
+    glGenVertexArrays(1, &triangle.vao);
+    glBindVertexArray(triangle.vao);
 
     // Create a Vertex Buffer Object and copy the vertex data to it
     glGenBuffers(1, &triangle.vbo);
@@ -188,26 +135,36 @@ renderable prepareTriangle()
 
     glBindBuffer(GL_ARRAY_BUFFER, triangle.vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
     triangle.count = 1;
 
-    const GLchar* vertexSource =
-        "#version 300 es\n"
-        "in vec2 position;    \n"
-        "void main()                  \n"
-        "{                            \n"
-        "   gl_Position = vec4(position.xy, 0, 1.0);  \n"
-        "}                            \n";
+    const GLchar* vertexSource = "#version 300 es\n" R"SHADER_END(
 
-    const GLchar* fragmentSource =
-        "#version 300 es\n"
-        "precision mediump float;\n"
-        "out vec4 color;\n"
-        "void main()                                  \n"
-        "{                                            \n"
-        "  color = vec4 (0.4, 0.8, 0.2, 1.0 );\n"
-        "}                                            \n";
+        in vec2 position;
+        out vec4 color;
 
-    triangle.program = compileProgram(vertexSource, fragmentSource);
+        void main()
+        {
+            gl_Position = vec4(position.xy, 0.0, 1.0);
+        }
+
+    )SHADER_END";
+
+    const GLchar* fragmentSource = "#version 300 es\n" R"SHADER_END(
+
+        precision mediump float;
+        out vec4 color;
+
+        void main()
+        {
+            color = vec4(0.4, 0.8, 0.2, 1.0);
+        }
+
+    )SHADER_END";
+
+    triangle.program = opengl::compileProgram(vertexSource, fragmentSource);
+
+    glUseProgram(triangle.program);
 
     // Specify the layout of the vertex data
     GLint posAttrib = glGetAttribLocation(triangle.program, "position");
@@ -217,36 +174,106 @@ renderable prepareTriangle()
     return triangle;
 }
 
-void renderOpenglSurface(const renderable& renderable, SDL_Surface* surface)
+renderable prepareCube()
 {
-    GLuint TextureID = 0;
-    glGenTextures(1, &TextureID);
-    glBindTexture(GL_TEXTURE_2D, TextureID);
+    renderable cube;
 
-    int Mode = surface->format->BytesPerPixel == 4
-        ? GL_RGBA
-        : GL_RGB;
+    // VAO
+    glGenVertexArrays(1, &cube.vao);
+    glBindVertexArray(cube.vao);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, Mode, surface->w, surface->h, 0, Mode, GL_UNSIGNED_BYTE, surface->pixels);
+    // VBO
+    GLfloat vertices[] = {
+        0.f, 1.f, 0.f,
+        -1.f, 0.f, -1.f,
+        1.f, 0.f, -1.f,
+        0.f, 0.f, 1.f,
+    };
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenBuffers(1, &cube.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, cube.vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices[0], GL_STATIC_DRAW);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, TextureID);
+    // INDEX
+    GLuint indices[] = {
+        1, 0, 2,
+        2, 0, 3,
+        3, 0, 1,
+        2, 3, 1,
+    };
 
-    renderable.render(); // quad
+    glGenBuffers(1, &cube.index);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube.index);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices[0], GL_STATIC_DRAW);
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    cube.count = 4;
 
-    glDeleteTextures(1, &TextureID);
+    const GLchar* vertexSource = "#version 300 es\n" R"SHADER_END(
+
+        in vec3 position;
+        uniform mat4 MVP;
+
+        void main()
+        {
+            gl_Position = MVP * vec4(position, 1.0);
+        }
+
+    )SHADER_END";
+
+    const GLchar* fragmentSource = "#version 300 es\n" R"SHADER_END(
+
+        precision mediump float;
+        out vec4 color;
+
+        void main()
+        {
+            color = vec4(0.0, 0.0, 0.0, 1.0);
+        }
+
+    )SHADER_END";
+
+    cube.program = opengl::compileProgram(vertexSource, fragmentSource);
+
+    glUseProgram(cube.program);
+
+    // Specify the layout of the vertex data
+    GLint posAttrib = glGetAttribLocation(cube.program, "position");
+    glEnableVertexAttribArray(posAttrib);
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+
+    return cube;
+}
+
+std::tuple<SDL_Renderer*, SDL_Surface*> createSurfaceRenderer()
+{
+    Uint32 rmask, gmask, bmask, amask;
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+    rmask = 0xff000000;
+    gmask = 0x00ff0000;
+    bmask = 0x0000ff00;
+    amask = 0x000000ff;
+#else
+    rmask = 0x000000ff;
+    gmask = 0x0000ff00;
+    bmask = 0x00ff0000;
+    amask = 0xff000000;
+#endif
+
+    SDL_Surface* surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, rmask, gmask, bmask, amask);
+    SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_BLEND);
+
+    SDL_Renderer* renderer = SDL_CreateSoftwareRenderer(surface);
+
+    SDL_RendererInfo rendererInfo;
+    SDL_GetRendererInfo(renderer, &rendererInfo);
+
+    std::cout << "[2D Renderer] SDL2 " << rendererInfo.name << std::endl;
+
+    return { renderer, surface };
 }
 
 int main(int argc, char** argv)
 {
-    #define SCREEN_WIDTH 640
-    #define SCREEN_HEIGHT 480
-
     SDL_Window* window =
         SDL_CreateWindow("test", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
             SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
@@ -262,45 +289,31 @@ int main(int argc, char** argv)
 
     SDL_GL_CreateContext(window);
 
-    loadOpenGL();
-    printContext();
+    opengl::link();
+    opengl::printContext();
 
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
-	
+
     SDL_GL_SetSwapInterval(0);
 
-    Uint32 rmask, gmask, bmask, amask;
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-    rmask = 0xff000000;
-    gmask = 0x00ff0000;
-    bmask = 0x0000ff00;
-    amask = 0x000000ff;
-#else
-    rmask = 0x000000ff;
-    gmask = 0x0000ff00;
-    bmask = 0x00ff0000;
-    amask = 0xff000000;
-#endif
+    SDL_Renderer* renderer;
+    SDL_Surface* surface;
 
-    SDL_Surface* surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, rmask, gmask, bmask, amask);
-
-    SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_BLEND);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    SDL_Renderer* renderer = SDL_CreateSoftwareRenderer(surface);
-
-    SDL_RendererInfo rendererInfo;
-    SDL_GetRendererInfo(renderer, &rendererInfo);
-
-    std::cout << "[2D Renderer] SDL2 " << rendererInfo.name << std::endl;
+    std::tie(renderer, surface) = createSurfaceRenderer();
 
     renderable quad = prepareQuad();
     renderable triangle = prepareTriangle();
+    renderable cube = prepareCube();
 
     const auto loop = [&]()
     {
@@ -322,31 +335,54 @@ int main(int argc, char** argv)
                     }
                 }
 
-                case SDL_MOUSEMOTION:
-                {
-                    int x, y; SDL_GetMouseState(&x, &y);
-                    std::cout << x << ", " << y << std::endl;
-                    break;
-                }
-
                 default: break;
             }
         }
 
         // Clear the screen
-        glClearColor(0.f, 0x33 / 255.f, 0x66 / 255.f, 1.f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        /////////////////////////////////////////////////////////////////////////////////////////
+
+        GL(glClearColor(0.f, 0x33 / 255.f, 0x66 / 255.f, 1.f));
+        GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0); // transparent overlay
+        SDL_RenderClear(renderer);
 
         // 3D rendering
         /////////////////////////////////////////////////////////////////////////////////////////
 
         triangle.render();
 
+        glm::mat4 Projection = glm::perspective(
+            glm::radians(45.0f),
+            (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+            0.01f, 1000.0f);
+
+        int mouseX, mouseY;
+        SDL_GetMouseState(&mouseX, &mouseY);
+
+        glm::mat4 View = glm::lookAt(
+            glm::vec3(
+                20 * (mouseX / (float)SCREEN_WIDTH) - 10,
+                20 * (mouseY / (float)SCREEN_HEIGHT) - 10,
+                -5),
+            glm::vec3(0, 0, 0), // and looks at the origin
+            glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
+        );
+
+        glm::mat4 Model = glm::mat4(1.0f);
+        glm::mat4 mvp = Projection * View * Model;
+
+        GL(glUseProgram(cube.program));
+
+        GLint matrixID = GL(glGetUniformLocation(cube.program, "MVP"));
+        GL(glUniformMatrix4fv(matrixID, 1, GL_FALSE, &mvp[0][0]));
+
+        opengl::new2dLayer();
+        cube.render(true);
+
         // 2D rendering
         /////////////////////////////////////////////////////////////////////////////////////////
-
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0); // transparent overlay
-        SDL_RenderClear(renderer);
 
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         SDL_RenderDrawLine(renderer, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -354,9 +390,14 @@ int main(int argc, char** argv)
         SDL_SetRenderDrawColor(renderer, 255, 215, 0, 255);
         SDL_RenderDrawLine(renderer, 0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
 
-        renderOpenglSurface(quad, surface); // render 2D surface
+        opengl::usingSurfaceTexture(surface, [&]()
+        {
+            opengl::new2dLayer();
+            quad.render();
+        });
 
         // swap buffers
+        GL_CHECK();
         SDL_GL_SwapWindow(window);
 
         return true;
@@ -364,30 +405,14 @@ int main(int argc, char** argv)
 
     const auto onExit = [&]()
     {
+        SDL_FreeSurface(surface);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+
         SDL_Quit();
 
         std::cout << "end" << std::endl;
     };
 
-#ifdef __EMSCRIPTEN__
-
-    auto emscriptenLoop = [&]()
-    {
-        if (!loop())
-        {
-            emscripten_cancel_main_loop();
-            onExit();
-        }
-    };
-
-    emscripten_set_main_loop_arg(
-        emscripten::getLoopPtr(emscriptenLoop),
-        &emscriptenLoop,
-        0, true);
-
-#else
-    while (loop()); onExit();
-#endif
-
-    return 0;
+    return runGameLoop(loop, onExit);
 }

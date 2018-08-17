@@ -70,13 +70,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\externals\SDL2-2.0.8\lib\x64;$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\externals\SDL2-2.0.8\lib\x64;$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
@@ -138,8 +138,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\externals\glad-es3.0\src\glad.c" />
+    <ClCompile Include="..\..\externals\glad-es3.0\src\glad.cpp" />
     <ClCompile Include="..\..\src\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\opengl.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
