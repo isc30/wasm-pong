@@ -11,8 +11,6 @@
 #include <string>
 #include <SDL.h>
 
-#include "callable.hpp"
-
 namespace opengl
 {
     class OpenglException
