@@ -1,30 +1,55 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="Game">
+      <UniqueIdentifier>{69881d82-b294-4ce2-98d3-a04587bdf81d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
+    <Filter Include="Engine">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Engine\sdl">
+      <UniqueIdentifier>{765cebd9-7867-45a4-9b11-f1fa0842abe5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\graphics">
+      <UniqueIdentifier>{81a55d1a-2e60-4fb2-b6c5-c835e840cb94}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\main.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Game</Filter>
     </ClCompile>
     <ClCompile Include="..\..\externals\glad-es3.0\src\glad.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Window.cpp">
+      <Filter>Engine\graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\opengl.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Emscripten.hpp">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\GameLoop.hpp">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\PongEngine.hpp">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\SDL.hpp">
+      <Filter>Engine\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\SDLRenderer.hpp">
+      <Filter>Engine\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Window.hpp">
+      <Filter>Engine\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\RuntimeException.hpp">
+      <Filter>Engine</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

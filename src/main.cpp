@@ -10,51 +10,75 @@
 #include <SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "GameLoop.hpp"
+#include "Window.hpp"
+
 #include "opengl.hpp"
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 
-#ifdef __EMSCRIPTEN__
-    namespace emscripten
-    {
-        using LoopPtr = void(*)(void*);
-
-        template<typename TLambda>
-        LoopPtr getLoopPtr(const TLambda&)
-        {
-            static LoopPtr executor = [](void* lambda)
-            {
-                (*static_cast<TLambda*>(lambda))();
-            };
-
-            return executor;
-        }
-    }
-#endif
-
-template<typename TGameLoop, typename TOnExit>
-int runGameLoop(const TGameLoop& loop, const TOnExit& onExit)
+struct renderable
 {
-#ifdef __EMSCRIPTEN__
-    auto emscriptenLoop = [&]()
+    GLuint program = 0;
+    GLuint vao = 0, vbo = 0, index = 0;
+    GLsizei count = 0;
+
+    void render(bool wireframe = false) const
     {
-        if (!loop())
+        GLenum mode = wireframe ? GL_LINE_LOOP : GL_TRIANGLES;
+        GLsizei verticesCount = 3 * count;
+
+        GL(glUseProgram(program));
+        GL(glBindVertexArray(vao));
+
+        if (index == 0)
         {
-            emscripten_cancel_main_loop();
-            onExit();
+            GL(glBindBuffer(GL_ARRAY_BUFFER, vbo));
+            GL(glDrawArrays(mode, 0, verticesCount));
+            GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         }
-    };
+        else
+        {
+            GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index));
+            GL(glDrawElements(mode, verticesCount, GL_UNSIGNED_INT, nullptr));
+            GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+        }
 
-    emscripten_set_main_loop_arg(
-        emscripten::getLoopPtr(emscriptenLoop),
-        &emscriptenLoop,
-        0, true);
-#else
-    while (loop()); onExit();
-#endif
+        GL(glBindVertexArray(0));
+        GL(glUseProgram(0));
+    }
+};
 
-    return 0;
+template<typename CRender>
+void usingSurfaceTexture(const SDL_Surface* surface, const CRender& render)
+{
+    GLuint TextureID = 0;
+    GL(glGenTextures(1, &TextureID));
+    GL(glBindTexture(GL_TEXTURE_2D, TextureID));
+
+    int Mode = surface->format->BytesPerPixel == 4
+        ? GL_RGBA
+        : GL_RGB;
+
+    GL(glTexImage2D(GL_TEXTURE_2D, 0, Mode, surface->w, surface->h, 0, Mode, GL_UNSIGNED_BYTE, surface->pixels));
+
+    GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+
+    GL(glActiveTexture(GL_TEXTURE0 + 0));
+    GL(glBindTexture(GL_TEXTURE_2D, TextureID));
+
+    render();
+
+    GL(glBindTexture(GL_TEXTURE_2D, 0));
+
+    GL(glDeleteTextures(1, &TextureID));
+}
+
+inline void new2dLayer()
+{
+    GL(glClear(GL_DEPTH_BUFFER_BIT));
 }
 
 renderable prepareQuad()
@@ -244,7 +268,7 @@ renderable prepareCube()
     return cube;
 }
 
-std::tuple<SDL_Renderer*, SDL_Surface*> createSurfaceRenderer()
+std::tuple<SDL_Renderer*, SDL_Surface*> createSurfaceRenderer(const isc::vec2<uint32_t>& size)
 {
     Uint32 rmask, gmask, bmask, amask;
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
@@ -259,68 +283,63 @@ std::tuple<SDL_Renderer*, SDL_Surface*> createSurfaceRenderer()
     amask = 0xff000000;
 #endif
 
-    SDL_Surface* surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, rmask, gmask, bmask, amask);
+    SDL_Surface* surface = SDL_CreateRGBSurface(0, size.x, size.y, 32, rmask, gmask, bmask, amask);
     SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_BLEND);
 
     SDL_Renderer* renderer = SDL_CreateSoftwareRenderer(surface);
 
-    SDL_RendererInfo rendererInfo;
-    SDL_GetRendererInfo(renderer, &rendererInfo);
-
-    std::cout << "[2D Renderer] SDL2 " << rendererInfo.name << std::endl;
-
     return { renderer, surface };
 }
 
-int main(int argc, char** argv)
+struct GameLoop
 {
-    SDL_Window* window =
-        SDL_CreateWindow("test", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-
-#ifndef __EMSCRIPTEN__
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-#endif
-
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 32);
-
-    SDL_GL_CreateContext(window);
-
-    opengl::link();
-    opengl::printContext();
-
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-
-    SDL_GL_SetSwapInterval(0);
-
+    isc::Window window;
     SDL_Renderer* renderer;
     SDL_Surface* surface;
 
-    std::tie(renderer, surface) = createSurfaceRenderer();
+    renderable quad;
+    renderable triangle;
+    renderable cube;
 
-    renderable quad = prepareQuad();
-    renderable triangle = prepareTriangle();
-    renderable cube = prepareCube();
-
-    const auto loop = [&]()
+    GameLoop()
     {
-        SDL_Event e;
-        while (SDL_PollEvent(&e))
+        window.create("Pong", { 640, 480 });
+
+        std::tie(renderer, surface) = createSurfaceRenderer(window.getSize());
+
+        quad = prepareQuad();
+        triangle = prepareTriangle();
+        cube = prepareCube();
+    }
+
+    void init()
+    {
+        SDL_RendererInfo rendererInfo;
+        SDL_GetRendererInfo(renderer, &rendererInfo);
+
+        opengl::printContext();
+        std::cout << "[2D Renderer] SDL2 " << rendererInfo.name << std::endl;
+    }
+
+    ~GameLoop()
+    {
+        SDL_FreeSurface(surface);
+        SDL_DestroyRenderer(renderer);
+
+        SDL_Quit();
+
+        std::cout << "[GameLoop] End" << std::endl;
+    }
+
+    bool loop(DeltaTime deltaTime)
+    {
+        SDL_Event event;
+
+        while (SDL_PollEvent(&event))
         {
-            switch (e.type)
+            window.handleEvent(event);
+
+            switch (event.type)
             {
                 case SDL_QUIT:
                 {
@@ -329,10 +348,30 @@ int main(int argc, char** argv)
 
                 case SDL_KEYDOWN:
                 {
-                    if (e.key.keysym.sym == SDLK_ESCAPE)
+                    if (event.key.keysym.sym == SDLK_ESCAPE)
                     {
                         return false;
                     }
+
+                    break;
+                }
+
+                case SDL_WINDOWEVENT:
+                {
+                    const auto& windowEvent = event.window;
+
+                    if (windowEvent.event == SDL_WINDOWEVENT_RESIZED || windowEvent.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+                    {
+                        const auto& windowSize = window.getSize();
+
+                        SDL_FreeSurface(surface);
+                        SDL_DestroyRenderer(renderer);
+                        std::tie(renderer, surface) = createSurfaceRenderer(windowSize);
+
+                        std::cout << "Resize: [" << windowSize.x << "," << windowSize.y << "]" << std::endl;
+                    }
+
+                    break;
                 }
 
                 default: break;
@@ -355,7 +394,7 @@ int main(int argc, char** argv)
 
         glm::mat4 Projection = glm::perspective(
             glm::radians(45.0f),
-            (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+            (float)window.getSize().x / (float)window.getSize().y,
             0.01f, 1000.0f);
 
         int mouseX, mouseY;
@@ -363,8 +402,8 @@ int main(int argc, char** argv)
 
         glm::mat4 View = glm::lookAt(
             glm::vec3(
-                20 * (mouseX / (float)SCREEN_WIDTH) - 10,
-                20 * (mouseY / (float)SCREEN_HEIGHT) - 10,
+                20 * (mouseX / (float)window.getSize().x) - 10,
+                20 * (mouseY / (float)window.getSize().y) - 10,
                 -5),
             glm::vec3(0, 0, 0), // and looks at the origin
             glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
@@ -378,41 +417,33 @@ int main(int argc, char** argv)
         GLint matrixID = GL(glGetUniformLocation(cube.program, "MVP"));
         GL(glUniformMatrix4fv(matrixID, 1, GL_FALSE, &mvp[0][0]));
 
-        opengl::new2dLayer();
+        new2dLayer();
         cube.render(true);
 
         // 2D rendering
         /////////////////////////////////////////////////////////////////////////////////////////
 
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        SDL_RenderDrawLine(renderer, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        SDL_RenderDrawLine(renderer, 0, 0, window.getSize().x, window.getSize().y);
 
         SDL_SetRenderDrawColor(renderer, 255, 215, 0, 255);
-        SDL_RenderDrawLine(renderer, 0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
+        SDL_RenderDrawLine(renderer, 0, window.getSize().y, window.getSize().x, 0);
 
-        opengl::usingSurfaceTexture(surface, [&]()
+        usingSurfaceTexture(surface, [&]()
         {
-            opengl::new2dLayer();
+            new2dLayer();
             quad.render();
         });
 
         // swap buffers
         GL_CHECK();
-        SDL_GL_SwapWindow(window);
+        window.swap();
 
         return true;
-    };
+    }
+};
 
-    const auto onExit = [&]()
-    {
-        SDL_FreeSurface(surface);
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-
-        SDL_Quit();
-
-        std::cout << "end" << std::endl;
-    };
-
-    return runGameLoop(loop, onExit);
+int main(int argc, char** argv)
+{
+    return initGameLoop<GameLoop>();
 }

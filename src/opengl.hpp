@@ -8,6 +8,8 @@
     #include <glad/glad.h> // OpenGL ES 3.0
 #endif
 
+#include <iostream>
+#include <vector>
 #include <string>
 #include <SDL.h>
 
@@ -45,7 +47,7 @@ namespace opengl
         }
     };
 
-    bool checkError(const char* file, const int line, const char* call)
+    static bool checkError(const char* file, const int line, const char* call)
     {
         const GLenum error = glGetError();
 
@@ -79,41 +81,9 @@ namespace opengl
 #define GL(glCall) glCall; do {} while (opengl::checkError(__FILE__, __LINE__, #glCall))
 #define GL_CHECK() do {} while (opengl::checkError(__FILE__, __LINE__, "GL_CHECK()"))
 
-struct renderable
-{
-    GLuint program = 0;
-    GLuint vao = 0, vbo = 0, index = 0;
-    GLsizei count = 0;
-
-    void render(bool wireframe = false) const
-    {
-        GLenum mode = wireframe ? GL_LINE_LOOP : GL_TRIANGLES;
-        GLsizei verticesCount = 3 * count;
-
-        GL(glUseProgram(program));
-        GL(glBindVertexArray(vao));
-
-        if (index == 0)
-        {
-            GL(glBindBuffer(GL_ARRAY_BUFFER, vbo));
-            GL(glDrawArrays(mode, 0, verticesCount));
-            GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
-        }
-        else
-        {
-            GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index));
-            GL(glDrawElements(mode, verticesCount, GL_UNSIGNED_INT, nullptr));
-            GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-        }
-
-        GL(glBindVertexArray(0));
-        GL(glUseProgram(0));
-    }
-};
-
 namespace opengl
 {
-    void link()
+    static void link()
     {
 #ifndef __EMSCRIPTEN__
         if (!gladLoadGLES2Loader(SDL_GL_GetProcAddress))
@@ -128,7 +98,7 @@ namespace opengl
 #endif
     }
 
-    void printContext()
+    static void printContext()
     {
         std::cout << "[OpenGL] " << glGetString(GL_VERSION) << std::endl;
         std::cout << "[Vendor] " << glGetString(GL_VENDOR) << std::endl;
@@ -136,13 +106,13 @@ namespace opengl
         std::cout << "[GLSL] " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
         //std::cout << "[Extensions] " << glGetString(GL_EXTENSIONS) << std::endl;
 
-#ifdef __EMSCRIPTEN__        
+#ifdef __EMSCRIPTEN__
         std::cout << "[WEBGL Vendor] " << glGetString(0x9245) << std::endl;
         std::cout << "[WEBGL Renderer] " << glGetString(0x9246) << std::endl;
 #endif
     }
 
-    GLuint compileProgram(const char* vertexSource, const char* fragmentSource)
+    static GLuint compileProgram(const char* vertexSource, const char* fragmentSource)
     {
         // Create and compile the vertex shader
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -192,36 +162,5 @@ namespace opengl
         }
 
         return program;
-    }
-
-    template<typename CRender>
-    void usingSurfaceTexture(const SDL_Surface* surface, const CRender& render)
-    {
-        GLuint TextureID = 0;
-        GL(glGenTextures(1, &TextureID));
-        GL(glBindTexture(GL_TEXTURE_2D, TextureID));
-
-        int Mode = surface->format->BytesPerPixel == 4
-            ? GL_RGBA
-            : GL_RGB;
-
-        GL(glTexImage2D(GL_TEXTURE_2D, 0, Mode, surface->w, surface->h, 0, Mode, GL_UNSIGNED_BYTE, surface->pixels));
-
-        GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-
-        GL(glActiveTexture(GL_TEXTURE0 + 0));
-        GL(glBindTexture(GL_TEXTURE_2D, TextureID));
-
-        render();
-
-        GL(glBindTexture(GL_TEXTURE_2D, 0));
-
-        GL(glDeleteTextures(1, &TextureID));
-    }
-
-    inline void new2dLayer()
-    {
-        GL(glClear(GL_DEPTH_BUFFER_BIT));
     }
 }

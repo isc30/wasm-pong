@@ -24,7 +24,7 @@ set-wasm:
 	$(eval CXX := em++)
 	$(eval CXXFLAGS := -std=c++14 $(LDFLAGS) $(TARGETFLAGS) $(LIBRARIES))
 	$(eval TARGET := wasm)
-	$(eval OUTFILE := index.html)
+	$(eval OUTFILE := index.js)
 	
 clean:
 	rm -rf $(OBJECTS)

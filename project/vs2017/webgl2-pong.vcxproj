@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{9DAC8DCE-D171-43BC-B620-BF689932CCEA}</ProjectGuid>
-    <RootNamespace>webgl2sdl2mixedrendering</RootNamespace>
+    <RootNamespace>webgl2pong</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -140,9 +140,17 @@
   <ItemGroup>
     <ClCompile Include="..\..\externals\glad-es3.0\src\glad.cpp" />
     <ClCompile Include="..\..\src\main.cpp" />
+    <ClCompile Include="..\..\src\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\src\Emscripten.hpp" />
+    <ClInclude Include="..\..\src\GameLoop.hpp" />
     <ClInclude Include="..\..\src\opengl.hpp" />
+    <ClInclude Include="..\..\src\PongEngine.hpp" />
+    <ClInclude Include="..\..\src\RuntimeException.hpp" />
+    <ClInclude Include="..\..\src\SDL.hpp" />
+    <ClInclude Include="..\..\src\SDLRenderer.hpp" />
+    <ClInclude Include="..\..\src\Window.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
