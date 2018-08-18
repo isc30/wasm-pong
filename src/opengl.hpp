@@ -78,7 +78,7 @@ namespace opengl
     }
 }
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(DEBUG_OPENGL)
     #define GL(glCall) glCall; do {} while (opengl::checkError(__FILE__, __LINE__, #glCall))
     #define GL_CHECK() do {} while (opengl::checkError(__FILE__, __LINE__, "GL_CHECK()"))
 #else
@@ -96,7 +96,9 @@ namespace opengl
             std::cout << "Error initializing OpenGL ES 3.0" << std::endl;
             std::abort();
         }
-#else
+#endif
+
+#ifdef __EMSCRIPTEN__
         emscripten_webgl_enable_extension(
             emscripten_webgl_get_current_context(),
             "WEBGL_debug_renderer_info");

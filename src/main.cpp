@@ -362,7 +362,8 @@ struct GameLoop
                 case SDL_FINGERMOTION:
                 case SDL_FINGERUP:
                 {
-                    touchLocation = isc::vec2<float>(event.tfinger.x, event.tfinger.y);
+                    auto finger = isc::vec2<float>(event.tfinger.x, event.tfinger.y);
+                    touchLocation = glm::clamp(finger, { 0.f, 0.f }, { 1.f, 1.f });
                     break;
                 }
 

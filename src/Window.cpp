@@ -15,11 +15,11 @@ namespace isc
         const vec2<uint32_t>& size,
         const uint32_t flags)
     {
-        _size = size + vec2<uint32_t>{1, 0};
+        _state.size = size + vec2<uint32_t>{1, 0};
         _window = make_object<SDL_Window>(SDL_CreateWindow, SDL_DestroyWindow,
             title,
             static_cast<int32_t>(SDL_WINDOWPOS_CENTERED), static_cast<int32_t>(SDL_WINDOWPOS_CENTERED),
-            static_cast<int32_t>(_size.x), static_cast<int32_t>(_size.y),
+            static_cast<int32_t>(_state.size.x), static_cast<int32_t>(_state.size.y),
             SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | flags);
 
         setInitialWindowSize(size);
@@ -63,7 +63,7 @@ namespace isc
 
     void Window::configure()
     {
-        glViewport(0, 0, _size.x, _size.y);
+        glViewport(0, 0, _state.size.x, _state.size.y);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -92,8 +92,8 @@ namespace isc
             case SDL_WINDOWEVENT_RESIZED:
             case SDL_WINDOWEVENT_SIZE_CHANGED:
             {
-                _size = { windowEvent.data1, windowEvent.data2 };
-                glViewport(0, 0, _size.x, _size.y);
+                _state.size = { windowEvent.data1, windowEvent.data2 };
+                glViewport(0, 0, _state.size.x, _state.size.y);
 
                 break;
             }
@@ -134,9 +134,14 @@ namespace isc
         return true;
     }
 
+    void Window::swap()
+    {
+        SDL_GL_SwapWindow(_window.get());
+    }
+
     const vec2<uint32_t>& Window::getSize() const noexcept
     {
-        return _size;
+        return _state.size;
     }
 
     bool Window::isOpen() const noexcept

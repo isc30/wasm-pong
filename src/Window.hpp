@@ -37,32 +37,19 @@ namespace isc
 
         virtual bool handleEvent(const SDL_Event& event);
 
-        void swap()
-        {
-            assert(_window);
-
-            SDL_GL_SwapWindow(_window.get());
-        }
+        void swap();
 
     protected:
-
-        enum struct Mode
-        {
-            Normal,
-            Minimized,
-            Maximized,
-        };
 
         struct State
         {
             bool isOpen = true;
             bool isVisible = true;
             bool isFocused = true;
-            Mode mode = Mode::Normal;
+            vec2<uint32_t> size;
         };
 
         State _state;
-        vec2<uint32_t> _size;
 
         virtual void configure();
 
