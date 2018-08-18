@@ -78,8 +78,13 @@ namespace opengl
     }
 }
 
-#define GL(glCall) glCall; do {} while (opengl::checkError(__FILE__, __LINE__, #glCall))
-#define GL_CHECK() do {} while (opengl::checkError(__FILE__, __LINE__, "GL_CHECK()"))
+#ifdef DEBUG
+    #define GL(glCall) glCall; do {} while (opengl::checkError(__FILE__, __LINE__, #glCall))
+    #define GL_CHECK() do {} while (opengl::checkError(__FILE__, __LINE__, "GL_CHECK()"))
+#else
+    #define GL(glCall) glCall;
+    #define GL_CHECK()
+#endif
 
 namespace opengl
 {
