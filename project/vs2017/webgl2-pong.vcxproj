@@ -146,6 +146,7 @@
     <ClInclude Include="..\..\src\Emscripten.hpp" />
     <ClInclude Include="..\..\src\GameLoop.hpp" />
     <ClInclude Include="..\..\src\opengl.hpp" />
+    <ClInclude Include="..\..\src\optional.hpp" />
     <ClInclude Include="..\..\src\PongEngine.hpp" />
     <ClInclude Include="..\..\src\RuntimeException.hpp" />
     <ClInclude Include="..\..\src\SDL.hpp" />

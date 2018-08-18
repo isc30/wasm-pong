@@ -5,6 +5,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Emscripten-Generated Code</title>
     <style>
+      #output { width: 100%; }
       .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
       div.emscripten { text-align: center; }
       div.emscripten_border { border: 1px solid black; }
@@ -16,7 +17,7 @@
     <div class="emscripten_border">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     </div>
-    <textarea id="output" rows="8"></textarea>
+    <textarea id="output" rows="20"></textarea>
 
     <script type='text/javascript'>
       var Module = {
@@ -54,10 +55,20 @@
           {
             var width = canvas.clientWidth;
             var height = canvas.clientHeight;
+
             if (canvas.width != width ||
-                canvas.height != height) {
+                canvas.height != height)
+            {
+              Module.setCanvasSize(width, height);
+
               canvas.width = width;
               canvas.height = height;
+
+              window.dispatchEvent(new Event("resize"));
+
+              var resizeEvent = window.document.createEvent('UIEvents'); 
+              resizeEvent.initUIEvent('resize', true, false, window, 0); 
+              window.dispatchEvent(resizeEvent);
             }
           };
 

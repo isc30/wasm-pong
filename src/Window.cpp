@@ -18,7 +18,7 @@ namespace isc
             title,
             static_cast<int32_t>(SDL_WINDOWPOS_CENTERED), static_cast<int32_t>(SDL_WINDOWPOS_CENTERED),
             static_cast<int32_t>(size.x), static_cast<int32_t>(size.y),
-            SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | flags);
+            SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL | flags);
 
         _size = size;
 
@@ -89,6 +89,18 @@ namespace isc
             case SDL_WINDOWEVENT_FOCUS_LOST:
             {
                 _state.isFocused = false;
+                break;
+            }
+
+            case SDL_WINDOWEVENT_SHOWN:
+            {
+                _state.isVisible = true;
+                break;
+            }
+
+            case SDL_WINDOWEVENT_HIDDEN:
+            {
+                _state.isVisible = false;
                 break;
             }
 

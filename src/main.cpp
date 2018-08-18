@@ -10,6 +10,8 @@
 #include <SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "optional.hpp"
+
 #include "GameLoop.hpp"
 #include "Window.hpp"
 
@@ -297,6 +299,8 @@ struct GameLoop
     SDL_Renderer* renderer;
     SDL_Surface* surface;
 
+    nonstd::optional<isc::vec2<uint32_t>> touchLocation;
+
     renderable quad;
     renderable triangle;
     renderable cube;
@@ -356,6 +360,20 @@ struct GameLoop
                     break;
                 }
 
+                case SDL_FINGERDOWN:
+                case SDL_FINGERMOTION:
+                case SDL_FINGERUP:
+                {
+                    touchLocation = isc::vec2<uint32_t>(event.tfinger.x, event.tfinger.y);
+                    break;
+                }
+
+                /*case SDL_FINGERUP:
+                {
+                    touchLocation = nonstd::nullopt;
+                    break;
+                }*/
+
                 case SDL_WINDOWEVENT:
                 {
                     const auto& windowEvent = event.window;
@@ -397,13 +415,17 @@ struct GameLoop
             (float)window.getSize().x / (float)window.getSize().y,
             0.01f, 1000.0f);
 
-        int mouseX, mouseY;
-        SDL_GetMouseState(&mouseX, &mouseY);
+        isc::vec2<int32_t> mouse;
+        SDL_GetMouseState(&mouse.x, &mouse.y);
+
+        isc::vec2<float> input = touchLocation.has_value()
+            ? isc::vec2<float>(touchLocation.value())
+            : (isc::vec2<float>(mouse) / isc::vec2<float>(window.getSize()));
 
         glm::mat4 View = glm::lookAt(
             glm::vec3(
-                20 * (mouseX / (float)window.getSize().x) - 10,
-                20 * (mouseY / (float)window.getSize().y) - 10,
+                20 * input.x - 10,
+                20 * input.y - 10,
                 -5),
             glm::vec3(0, 0, 0), // and looks at the origin
             glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
