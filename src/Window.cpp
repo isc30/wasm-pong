@@ -30,14 +30,14 @@ namespace isc
 
     void Window::setInitialWindowSize()
     {
-        bool wasExternallyResized = sdl::EventQueue::any([](const SDL_Event& event)
+        bool isResizedExternally = sdl::EventQueue::any([](const SDL_Event& event)
         {
             return event.type == SDL_WINDOWEVENT
                 && event.window.event == SDL_WINDOWEVENT_RESIZED;
         });
 
-        // don't resize if the window was already resized externally
-        if (!wasExternallyResized)
+        // don't resize if the window is already resized externally
+        if (!isResizedExternally)
         {
             SDL_SetWindowSize(_window.get(), static_cast<int32_t>(_size.x), static_cast<int32_t>(_size.y));
             SDL_SetWindowPosition(_window.get(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
