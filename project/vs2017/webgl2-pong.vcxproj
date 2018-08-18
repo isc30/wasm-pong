@@ -143,6 +143,7 @@
     <ClCompile Include="..\..\src\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\src\callable.hpp" />
     <ClInclude Include="..\..\src\Emscripten.hpp" />
     <ClInclude Include="..\..\src\GameLoop.hpp" />
     <ClInclude Include="..\..\src\opengl.hpp" />
@@ -150,6 +151,7 @@
     <ClInclude Include="..\..\src\PongEngine.hpp" />
     <ClInclude Include="..\..\src\RuntimeException.hpp" />
     <ClInclude Include="..\..\src\SDL.hpp" />
+    <ClInclude Include="..\..\src\SDLEventQueue.hpp" />
     <ClInclude Include="..\..\src\SDLRenderer.hpp" />
     <ClInclude Include="..\..\src\Window.hpp" />
   </ItemGroup>

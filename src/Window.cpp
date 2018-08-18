@@ -1,12 +1,13 @@
 #include "Window.hpp"
 
 #include "opengl.hpp"
+#include "SDLEventQueue.hpp"
 
 namespace isc
 {
     Window::Window()
-        : _window(null_object<SDL_Window>())
-        , _glContext(null_object<void>())
+        : _window(null_SDLObject<SDL_Window>())
+        , _glContext(null_SDLObject<void>())
     {
     }
 
@@ -14,16 +15,33 @@ namespace isc
         const vec2<uint32_t>& size,
         const uint32_t flags)
     {
+        _size = size;
         _window = make_object<SDL_Window>(SDL_CreateWindow, SDL_DestroyWindow,
             title,
             static_cast<int32_t>(SDL_WINDOWPOS_CENTERED), static_cast<int32_t>(SDL_WINDOWPOS_CENTERED),
-            static_cast<int32_t>(size.x), static_cast<int32_t>(size.y),
-            SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL | flags);
+            static_cast<int32_t>(_size.x + 1), static_cast<int32_t>(_size.y),
+            SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | flags);
 
-        _size = size;
+        setInitialWindowSize();
 
         initOpenGL();
         configure();
+    }
+
+    void Window::setInitialWindowSize()
+    {
+        bool wasExternallyResized = sdl::EventQueue::any([](const SDL_Event& event)
+        {
+            return event.type == SDL_WINDOWEVENT
+                && event.window.event == SDL_WINDOWEVENT_RESIZED;
+        });
+
+        // don't resize if the window was already resized externally
+        if (!wasExternallyResized)
+        {
+            SDL_SetWindowSize(_window.get(), static_cast<int32_t>(_size.x), static_cast<int32_t>(_size.y));
+            SDL_SetWindowPosition(_window.get(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        }
     }
 
     void Window::initOpenGL()

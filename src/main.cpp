@@ -14,11 +14,9 @@
 
 #include "GameLoop.hpp"
 #include "Window.hpp"
+#include "SDLEventQueue.hpp"
 
 #include "opengl.hpp"
-
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
 
 struct renderable
 {
@@ -339,7 +337,7 @@ struct GameLoop
     {
         SDL_Event event;
 
-        while (SDL_PollEvent(&event))
+        while (isc::sdl::EventQueue::poll(event))
         {
             window.handleEvent(event);
 
@@ -378,7 +376,7 @@ struct GameLoop
                 {
                     const auto& windowEvent = event.window;
 
-                    if (windowEvent.event == SDL_WINDOWEVENT_RESIZED || windowEvent.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+                    if (windowEvent.event == SDL_WINDOWEVENT_SIZE_CHANGED)
                     {
                         const auto& windowSize = window.getSize();
 

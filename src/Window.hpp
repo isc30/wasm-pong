@@ -10,8 +10,8 @@
 
 namespace isc
 {
-    template<typename T>
-    using vec2 = glm::vec<2, T>;
+    template<typename TPredicate>
+    using vec2 = glm::vec<2, TPredicate>;
 
     class Window
     {
@@ -72,6 +72,6 @@ namespace isc
         SDLObject<void> _glContext;
 
         void initOpenGL();
-
+        void setInitialWindowSize();
     };
 }

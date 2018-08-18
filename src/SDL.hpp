@@ -40,8 +40,13 @@ namespace isc
     }
 
     template<typename TObject>
-    SDLObject<TObject> null_object()
+    SDLObject<TObject> null_SDLObject()
     {
         return SDLObject<TObject>(nullptr, [](TObject*) {});
+    }
+
+    static inline constexpr bool to_bool(int32_t value)
+    {
+        return value == 1;
     }
 }

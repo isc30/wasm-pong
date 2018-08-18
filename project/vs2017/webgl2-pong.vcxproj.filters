@@ -54,5 +54,11 @@
     <ClInclude Include="..\..\src\optional.hpp">
       <Filter>Engine</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\SDLEventQueue.hpp">
+      <Filter>Engine\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\callable.hpp">
+      <Filter>Engine</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
