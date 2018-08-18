@@ -51,27 +51,6 @@
         canvas: (function() {
           var canvas = document.getElementById('canvas');
 
-          window.onresize = function()
-          {
-            var width = canvas.clientWidth;
-            var height = canvas.clientHeight;
-
-            if (canvas.width != width ||
-                canvas.height != height)
-            {
-              Module.setCanvasSize(width, height);
-
-              canvas.width = width;
-              canvas.height = height;
-
-              window.dispatchEvent(new Event("resize"));
-
-              var resizeEvent = window.document.createEvent('UIEvents'); 
-              resizeEvent.initUIEvent('resize', true, false, window, 0); 
-              window.dispatchEvent(resizeEvent);
-            }
-          };
-
           // As a default initial behavior, pop up an alert when webgl context is lost. To make your
           // application robust, you may want to override this behavior before shipping!
           // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
