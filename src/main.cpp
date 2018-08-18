@@ -297,7 +297,7 @@ struct GameLoop
     SDL_Renderer* renderer;
     SDL_Surface* surface;
 
-    nonstd::optional<isc::vec2<uint32_t>> touchLocation;
+    nonstd::optional<isc::vec2<float>> touchLocation;
 
     renderable quad;
     renderable triangle;
@@ -362,15 +362,9 @@ struct GameLoop
                 case SDL_FINGERMOTION:
                 case SDL_FINGERUP:
                 {
-                    touchLocation = isc::vec2<uint32_t>(event.tfinger.x, event.tfinger.y);
+                    touchLocation = isc::vec2<float>(event.tfinger.x, event.tfinger.y);
                     break;
                 }
-
-                /*case SDL_FINGERUP:
-                {
-                    touchLocation = nonstd::nullopt;
-                    break;
-                }*/
 
                 case SDL_WINDOWEVENT:
                 {
@@ -417,7 +411,7 @@ struct GameLoop
         SDL_GetMouseState(&mouse.x, &mouse.y);
 
         isc::vec2<float> input = touchLocation.has_value()
-            ? isc::vec2<float>(touchLocation.value())
+            ? touchLocation.value()
             : (isc::vec2<float>(mouse) / isc::vec2<float>(window.getSize()));
 
         glm::mat4 View = glm::lookAt(
