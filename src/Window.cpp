@@ -15,20 +15,20 @@ namespace isc
         const vec2<uint32_t>& size,
         const uint32_t flags)
     {
-        _size = size;
+        _size = size + vec2<uint32_t>{1, 0};
         _window = make_object<SDL_Window>(SDL_CreateWindow, SDL_DestroyWindow,
             title,
             static_cast<int32_t>(SDL_WINDOWPOS_CENTERED), static_cast<int32_t>(SDL_WINDOWPOS_CENTERED),
-            static_cast<int32_t>(_size.x + 1), static_cast<int32_t>(_size.y),
+            static_cast<int32_t>(_size.x), static_cast<int32_t>(_size.y),
             SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | flags);
 
-        setInitialWindowSize();
+        setInitialWindowSize(size);
 
         initOpenGL();
         configure();
     }
 
-    void Window::setInitialWindowSize()
+    void Window::setInitialWindowSize(const vec2<uint32_t>& size)
     {
         bool isResizedExternally = sdl::EventQueue::any([](const SDL_Event& event)
         {
@@ -39,7 +39,7 @@ namespace isc
         // don't resize if the window is already resized externally
         if (!isResizedExternally)
         {
-            SDL_SetWindowSize(_window.get(), static_cast<int32_t>(_size.x), static_cast<int32_t>(_size.y));
+            SDL_SetWindowSize(_window.get(), static_cast<int32_t>(size.x), static_cast<int32_t>(size.y));
             SDL_SetWindowPosition(_window.get(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
         }
     }

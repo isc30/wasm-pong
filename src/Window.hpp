@@ -72,6 +72,6 @@ namespace isc
         SDLObject<void> _glContext;
 
         void initOpenGL();
-        void setInitialWindowSize();
+        void setInitialWindowSize(const vec2<uint32_t>& size);
     };
 }
