@@ -1,9 +1,12 @@
-PROJECT_NAME = webgl2-sdl2-mixed-rendering
+PROJECT_NAME = webgl2-sdl2-pong
 
 SRC_DIR = ./src
 BUILD_DIR = ./build
 
-SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
+# Make does not offer a recursive wildcard function, so here's one:
+rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
+
+SOURCES := $(call rwildcard,$(SRC_DIR),*.cpp)
 OBJECTS := $(patsubst %.cpp, %.o, $(SOURCES))
 
 all:
@@ -37,5 +40,6 @@ g++: clean set-g++ compile
 wasm: clean set-wasm compile
 
 show-vars:
+	echo $(CODEFILES)
 	echo $(SOURCES)
 	echo $(OBJECTS)

@@ -18,6 +18,13 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\**\*.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\**\*.cpp" />
+    <ClCompile Include="..\..\externals\glad-es3.0\src\glad.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{9DAC8DCE-D171-43BC-B620-BF689932CCEA}</ProjectGuid>
@@ -70,13 +77,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;..\..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\externals\SDL2-2.0.8\lib\x64;$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;..\..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\externals\SDL2-2.0.8\lib\x64;$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
@@ -138,24 +145,6 @@
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\externals\glad-es3.0\src\glad.cpp" />
-    <ClCompile Include="..\..\src\main.cpp" />
-    <ClCompile Include="..\..\src\Window.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\src\callable.hpp" />
-    <ClInclude Include="..\..\src\Emscripten.hpp" />
-    <ClInclude Include="..\..\src\GameLoop.hpp" />
-    <ClInclude Include="..\..\src\opengl.hpp" />
-    <ClInclude Include="..\..\src\optional.hpp" />
-    <ClInclude Include="..\..\src\PongEngine.hpp" />
-    <ClInclude Include="..\..\src\RuntimeException.hpp" />
-    <ClInclude Include="..\..\src\SDL.hpp" />
-    <ClInclude Include="..\..\src\SDLEventQueue.hpp" />
-    <ClInclude Include="..\..\src\SDLRenderer.hpp" />
-    <ClInclude Include="..\..\src\Window.hpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

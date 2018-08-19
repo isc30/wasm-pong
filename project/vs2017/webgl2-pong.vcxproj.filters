@@ -1,64 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Game">
-      <UniqueIdentifier>{69881d82-b294-4ce2-98d3-a04587bdf81d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Engine\sdl">
-      <UniqueIdentifier>{765cebd9-7867-45a4-9b11-f1fa0842abe5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\graphics">
-      <UniqueIdentifier>{81a55d1a-2e60-4fb2-b6c5-c835e840cb94}</UniqueIdentifier>
-    </Filter>
+    <ClCompile Include="..\..\src\**\*.cpp" />
+    <ClCompile Include="..\..\externals\glad-es3.0\src\glad.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\main.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\externals\glad-es3.0\src\glad.cpp">
-      <Filter>Engine</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\Window.cpp">
-      <Filter>Engine\graphics</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\src\opengl.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\Emscripten.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\GameLoop.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\PongEngine.hpp">
-      <Filter>Game</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\SDL.hpp">
-      <Filter>Engine\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\SDLRenderer.hpp">
-      <Filter>Engine\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\Window.hpp">
-      <Filter>Engine\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\RuntimeException.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\optional.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\SDLEventQueue.hpp">
-      <Filter>Engine\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\callable.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
+    <ClInclude Include="..\..\src\**\*.hpp" />
   </ItemGroup>
 </Project>
