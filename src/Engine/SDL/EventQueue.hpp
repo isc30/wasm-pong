@@ -41,8 +41,6 @@ namespace isc
                     push(std::move(event));
                 }
 
-                events.clear(); // events were moved
-
                 return result;
             }
         }
