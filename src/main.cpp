@@ -10,6 +10,8 @@
 #include <SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <Engine/Debug/UpdateProfiler.hpp>
+
 #include <Engine/Extensions/Optional.hpp>
 #include <Engine/GameLoop.hpp>
 #include <Engine/IO/Window.hpp>
@@ -295,6 +297,7 @@ struct GameLoop
     isc::Window window;
     SDL_Renderer* renderer;
     SDL_Surface* surface;
+    isc::UpdateProfiler profiler;
 
     nonstd::optional<isc::vec2<float>> touchLocation;
 
@@ -334,6 +337,8 @@ struct GameLoop
 
     bool loop(DeltaTime deltaTime)
     {
+        profiler.update(deltaTime);
+
         SDL_Event event;
 
         while (isc::sdl::EventQueue::poll(event))

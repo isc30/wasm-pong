@@ -3,9 +3,8 @@
 #include <memory>
 #include <chrono>
 
+#include <Engine/Common.hpp>
 #include <Engine/Integrations/Emscripten.hpp>
-
-using DeltaTime = std::chrono::duration<double, std::milli>;
 
 template<typename TGameContext, typename... TArgs>
 constexpr int initGameLoop(TArgs&&... args)
