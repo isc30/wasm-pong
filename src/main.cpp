@@ -354,6 +354,11 @@ struct GameLoop
                         return false;
                     }
 
+                    if (event.key.keysym.sym == SDLK_f)
+                    {
+                        window.requestFullScreen(false);
+                    }
+
                     break;
                 }
 
@@ -449,13 +454,13 @@ struct GameLoop
             quad.render();
         });
 
-        // swap buffers
-        GL_CHECK();
         window.swap();
 
-        return true;
+        return window.isOpen();
     }
 };
+
+#include "PongEngine.hpp"
 
 int main(int argc, char** argv)
 {

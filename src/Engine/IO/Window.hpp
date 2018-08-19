@@ -19,7 +19,7 @@ namespace isc
 
         virtual void create(const char* title,
             const vec2<uint32_t>& size,
-            const uint32_t flags = 0);
+            const SDL_WindowFlags flags = static_cast<SDL_WindowFlags>(0));
 
         const vec2<uint32_t>& getSize() const noexcept;
 
@@ -34,6 +34,7 @@ namespace isc
 
         virtual bool handleEvent(const SDL_Event& event);
 
+        void requestFullScreen(bool borderless) noexcept;
         void swap();
 
     protected:

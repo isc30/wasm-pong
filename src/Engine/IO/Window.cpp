@@ -16,14 +16,14 @@ namespace isc
 
     void Window::create(const char* title,
         const vec2<uint32_t>& size,
-        const uint32_t flags)
+        const SDL_WindowFlags flags)
     {
         _state.size = size + vec2<uint32_t>{1, 0};
         _window = sdl::makeObject<SDL_Window>(SDL_CreateWindow, SDL_DestroyWindow,
             title,
             static_cast<int32_t>(SDL_WINDOWPOS_CENTERED), static_cast<int32_t>(SDL_WINDOWPOS_CENTERED),
             static_cast<int32_t>(_state.size.x), static_cast<int32_t>(_state.size.y),
-            SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | flags);
+            SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | static_cast<uint32_t>(flags));
 
         setInitialWindowSize(size);
 
@@ -79,6 +79,15 @@ namespace isc
         GL(glFrontFace(GL_CCW));
 
         SDL_GL_SetSwapInterval(0);
+    }
+
+    void Window::requestFullScreen(bool borderless) noexcept
+    {
+        auto flag = borderless
+            ? SDL_WINDOW_FULLSCREEN_DESKTOP
+            : SDL_WINDOW_FULLSCREEN;
+
+        SDL_SetWindowFullscreen(_window.get(), flag);
     }
 
     bool Window::handleEvent(const SDL_Event& event)
@@ -139,6 +148,7 @@ namespace isc
 
     void Window::swap()
     {
+        GL_CHECK();
         SDL_GL_SwapWindow(_window.get());
     }
 
