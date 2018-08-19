@@ -20,7 +20,7 @@ struct PongEngine
 
     void init()
     {
-        opengl::printContext();
+        isc::gl::printContext();
     }
 
     ~PongEngine()

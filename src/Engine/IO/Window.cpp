@@ -61,7 +61,7 @@ namespace isc
 
         _glContext = sdl::makeObject<void>(SDL_GL_CreateContext, SDL_GL_DeleteContext, _window.get());
 
-        opengl::link();
+        gl::link();
     }
 
     void Window::configure()

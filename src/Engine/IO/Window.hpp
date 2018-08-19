@@ -2,8 +2,7 @@
 
 #include <string>
 
-#include <SDL_video.h>
-#include <SDL_events.h>
+#include <SDL.h>
 
 #include <Engine/SDL/Object.hpp>
 #include <Engine/Math/Vector.hpp>

@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <Engine/Exceptions/RuntimeException.hpp>
+#include <SDL.h>
 
 namespace isc
 {

@@ -131,7 +131,7 @@ renderable prepareQuad()
 
     )SHADER_END";
 
-    quad.program = opengl::compileProgram(vertexSource, fragmentSource);
+    quad.program = isc::gl::compileProgram(vertexSource, fragmentSource);
 
     glUseProgram(quad.program);
 
@@ -185,7 +185,7 @@ renderable prepareTriangle()
 
     )SHADER_END";
 
-    triangle.program = opengl::compileProgram(vertexSource, fragmentSource);
+    triangle.program = isc::gl::compileProgram(vertexSource, fragmentSource);
 
     glUseProgram(triangle.program);
 
@@ -255,7 +255,7 @@ renderable prepareCube()
 
     )SHADER_END";
 
-    cube.program = opengl::compileProgram(vertexSource, fragmentSource);
+    cube.program = isc::gl::compileProgram(vertexSource, fragmentSource);
 
     glUseProgram(cube.program);
 
@@ -318,7 +318,7 @@ struct GameLoop
         SDL_RendererInfo rendererInfo;
         SDL_GetRendererInfo(renderer, &rendererInfo);
 
-        opengl::printContext();
+        isc::gl::printContext();
         std::cout << "[2D Renderer] SDL2 " << rendererInfo.name << std::endl;
     }
 
@@ -461,6 +461,7 @@ struct GameLoop
 };
 
 #include "PongEngine.hpp"
+#include <Engine/SDL/Renderer.hpp>
 
 int main(int argc, char** argv)
 {
