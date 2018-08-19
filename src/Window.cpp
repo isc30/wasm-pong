@@ -36,7 +36,7 @@ namespace isc
                 && event.window.event == SDL_WINDOWEVENT_RESIZED;
         });
 
-        // don't resize if the window is already resized externally
+        // don't resize if the window was already resized externally
         if (!isResizedExternally)
         {
             SDL_SetWindowSize(_window.get(), static_cast<int32_t>(size.x), static_cast<int32_t>(size.y));
@@ -63,17 +63,17 @@ namespace isc
 
     void Window::configure()
     {
-        glViewport(0, 0, _state.size.x, _state.size.y);
+        GL(glViewport(0, 0, _state.size.x, _state.size.y));
 
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        GL(glEnable(GL_BLEND));
+        GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
+        GL(glEnable(GL_DEPTH_TEST));
+        GL(glDepthFunc(GL_LEQUAL));
 
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        glFrontFace(GL_CCW);
+        GL(glEnable(GL_CULL_FACE));
+        GL(glCullFace(GL_BACK));
+        GL(glFrontFace(GL_CCW));
 
         SDL_GL_SetSwapInterval(0);
     }
@@ -93,7 +93,7 @@ namespace isc
             case SDL_WINDOWEVENT_SIZE_CHANGED:
             {
                 _state.size = { windowEvent.data1, windowEvent.data2 };
-                glViewport(0, 0, _state.size.x, _state.size.y);
+                GL(glViewport(0, 0, _state.size.x, _state.size.y));
 
                 break;
             }
