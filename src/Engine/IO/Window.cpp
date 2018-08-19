@@ -1,13 +1,16 @@
 #include "Window.hpp"
 
-#include "opengl.hpp"
-#include "SDLEventQueue.hpp"
+#include <SDL.h>
+
+#include <Engine/SDL/Object.hpp>
+#include <Engine/SDL/EventQueue.hpp>
+#include <Engine/Graphics/OpenGL/OpenGL.hpp>
 
 namespace isc
 {
     Window::Window()
-        : _window(null_SDLObject<SDL_Window>())
-        , _glContext(null_SDLObject<void>())
+        : _window(sdl::makeNullObject<SDL_Window>())
+        , _glContext(sdl::makeNullObject<void>())
     {
     }
 
@@ -16,7 +19,7 @@ namespace isc
         const uint32_t flags)
     {
         _state.size = size + vec2<uint32_t>{1, 0};
-        _window = make_object<SDL_Window>(SDL_CreateWindow, SDL_DestroyWindow,
+        _window = sdl::makeObject<SDL_Window>(SDL_CreateWindow, SDL_DestroyWindow,
             title,
             static_cast<int32_t>(SDL_WINDOWPOS_CENTERED), static_cast<int32_t>(SDL_WINDOWPOS_CENTERED),
             static_cast<int32_t>(_state.size.x), static_cast<int32_t>(_state.size.y),
@@ -56,7 +59,7 @@ namespace isc
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 32);
 
-        _glContext = make_object<void>(SDL_GL_CreateContext, SDL_GL_DeleteContext, _window.get());
+        _glContext = sdl::makeObject<void>(SDL_GL_CreateContext, SDL_GL_DeleteContext, _window.get());
 
         opengl::link();
     }

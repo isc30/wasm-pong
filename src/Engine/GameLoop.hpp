@@ -3,7 +3,7 @@
 #include <memory>
 #include <chrono>
 
-#include "Emscripten.hpp"
+#include <Engine/Integrations/Emscripten.hpp>
 
 using DeltaTime = std::chrono::duration<double, std::milli>;
 

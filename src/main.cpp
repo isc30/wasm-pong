@@ -10,13 +10,12 @@
 #include <SDL.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "optional.hpp"
+#include <Engine/Extensions/Optional.hpp>
+#include <Engine/GameLoop.hpp>
+#include <Engine/IO/Window.hpp>
+#include <Engine/SDL/EventQueue.hpp>
 
-#include "GameLoop.hpp"
-#include "Window.hpp"
-#include "SDLEventQueue.hpp"
-
-#include "opengl.hpp"
+#include <Engine/Graphics/OpenGL/OpenGL.hpp>
 
 struct renderable
 {

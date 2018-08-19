@@ -10,4 +10,4 @@ template<
     typename TCallable,
     typename TSignature,
     typename = std::enable_if_t<is_callable_as_v<TCallable, TSignature>>>
-    using callable = TCallable;
+    using Callable = TCallable;

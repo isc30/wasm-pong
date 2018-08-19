@@ -4,15 +4,12 @@
 
 #include <SDL_video.h>
 #include <SDL_events.h>
-#include "SDL.hpp"
 
-#include <glm/glm.hpp>
+#include <Engine/SDL/Object.hpp>
+#include <Engine/Math/Vector.hpp>
 
 namespace isc
 {
-    template<typename TPredicate>
-    using vec2 = glm::vec<2, TPredicate>;
-
     class Window
     {
     public:
@@ -55,8 +52,8 @@ namespace isc
 
     private:
 
-        SDLObject<SDL_Window> _window;
-        SDLObject<void> _glContext;
+        sdl::Object<SDL_Window> _window;
+        sdl::Object<void> _glContext;
 
         void initOpenGL();
         void setInitialWindowSize(const vec2<uint32_t>& size);

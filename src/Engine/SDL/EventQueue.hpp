@@ -1,9 +1,9 @@
 #pragma once
 
-#include "callable.hpp"
-
 #include <deque>
 #include <SDL.h>
+
+#include <Engine/Extensions/Callable.hpp>
 
 namespace isc
 {
@@ -13,17 +13,17 @@ namespace isc
         {
             static inline bool push(SDL_Event&& event)
             {
-                return to_bool(SDL_PushEvent(&event));
+                return SDL_PushEvent(&event) == 1;
             }
 
             static inline bool poll(SDL_Event& event)
             {
-                return to_bool(SDL_PollEvent(&event));
+                return SDL_PollEvent(&event) == 1;
             }
 
             template<typename TPredicate>
             static bool any(
-                const callable<TPredicate, bool(const SDL_Event&)>& predicate)
+                const Callable<TPredicate, bool(const SDL_Event&)>& predicate)
             {
                 bool result = false;
 
@@ -33,7 +33,7 @@ namespace isc
                 while (poll(currentEvent))
                 {
                     result |= predicate(currentEvent);
-                    events.emplace_back(currentEvent);
+                    events.emplace_back(std::move(currentEvent));
                 }
 
                 for (auto& event : events)

@@ -1,89 +1,93 @@
 #pragma once
 
-#ifdef __EMSCRIPTEN__
-    #include <emscripten.h>
-    #include <GLES3/gl3.h>
-    #include <emscripten/html5.h>
-#else
-    #include <glad/glad.h> // OpenGL ES 3.0
-#endif
-
 #include <iostream>
 #include <vector>
 #include <string>
 #include <SDL.h>
 
-namespace opengl
-{
-    class OpenglException
-        : public std::exception
-    {
-    public:
+#ifdef __EMSCRIPTEN__
+    #include <GLES3/gl3.h>
+#else
+    #include <glad/glad.h> // OpenGL ES 3.0
+#endif
 
-        const std::string file;
-        const unsigned int line;
-        const std::string call;
-
-        const int errorCode;
-        const std::string errorDescription;
-
-        const std::string message;
-
-        OpenglException(const std::string& file, const int line, const std::string& call, const int errorCode, const std::string& errorDescription)
-            : file(file)
-            , line(line)
-            , call(call)
-            , errorCode(errorCode)
-            , errorDescription(errorDescription)
-            , message("OpenGL error " + std::to_string(errorCode) + " `"
-                + errorDescription + "` @ " + file + ":" + std::to_string(line)
-                + (call.size() > 0 ? " - `" + call + "`" : ""))
-        {
-        }
-
-        const char* what() const noexcept override
-        {
-            return message.c_str();
-        }
-    };
-
-    static bool checkError(const char* file, const int line, const char* call)
-    {
-        const GLenum error = glGetError();
-
-        if (error == GL_NO_ERROR)
-        {
-            return false;
-        }
-
-        const char* description;
-
-        switch (error)
-        {
-            case GL_INVALID_ENUM:                   description = "Invalid enum"; break;
-            case GL_INVALID_VALUE:                  description = "Invalid value"; break;
-            case GL_INVALID_OPERATION:              description = "Invalid operation"; break;
-            case GL_OUT_OF_MEMORY:                  description = "Out of memory"; break;
-            case GL_INVALID_FRAMEBUFFER_OPERATION:  description = "Invalid framebuffer operation"; break;
-            default:                                description = "Unknown error"; break;
-        }
-
-        OpenglException exception(file, line, (call == nullptr ? "" : call), error, description);
-
-        std::cout << exception.what() << std::endl;
-
-        throw exception;
-
-        return true;
-    }
-}
+#include <Engine/Integrations/Emscripten.hpp>
 
 #if defined(DEBUG) && defined(DEBUG_OPENGL)
+
+    namespace opengl
+    {
+        class OpenglException
+            : public std::exception
+        {
+        public:
+
+            const std::string file;
+            const unsigned int line;
+            const std::string call;
+
+            const int errorCode;
+            const std::string errorDescription;
+
+            const std::string message;
+
+            OpenglException(const std::string& file, const int line, const std::string& call, const int errorCode, const std::string& errorDescription)
+                : file(file)
+                , line(line)
+                , call(call)
+                , errorCode(errorCode)
+                , errorDescription(errorDescription)
+                , message("OpenGL error " + std::to_string(errorCode) + " `"
+                    + errorDescription + "` @ " + file + ":" + std::to_string(line)
+                    + (call.size() > 0 ? " - `" + call + "`" : ""))
+            {
+            }
+
+            const char* what() const noexcept override
+            {
+                return message.c_str();
+            }
+        };
+
+        static bool checkError(const char* file, const int line, const char* call)
+        {
+            const GLenum error = glGetError();
+
+            if (error == GL_NO_ERROR)
+            {
+                return false;
+            }
+
+            const char* description;
+
+            switch (error)
+            {
+                case GL_INVALID_ENUM:                   description = "Invalid enum"; break;
+                case GL_INVALID_VALUE:                  description = "Invalid value"; break;
+                case GL_INVALID_OPERATION:              description = "Invalid operation"; break;
+                case GL_OUT_OF_MEMORY:                  description = "Out of memory"; break;
+                case GL_INVALID_FRAMEBUFFER_OPERATION:  description = "Invalid framebuffer operation"; break;
+                default:                                description = "Unknown error"; break;
+            }
+
+            OpenglException exception(file, line, (call == nullptr ? "" : call), error, description);
+
+            std::cout << exception.what() << std::endl;
+
+            throw exception;
+
+            return true;
+        }
+    }
+
     #define GL(glCall) glCall; do {} while (opengl::checkError(__FILE__, __LINE__, #glCall))
     #define GL_CHECK() do {} while (opengl::checkError(__FILE__, __LINE__, "GL_CHECK()"))
+
 #else
+
     #define GL(glCall) glCall;
     #define GL_CHECK()
+
 #endif
 
 namespace opengl
