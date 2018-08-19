@@ -33,7 +33,7 @@ namespace isc
                 << std::setprecision(3) << average.count() << "ms)"
                 << std::endl;
 
-            _deltaTotal -= 1s;
+            _deltaTotal = 0ms;
             _tickCount = 0;
         }
     }

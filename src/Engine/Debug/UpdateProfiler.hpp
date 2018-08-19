@@ -7,6 +7,7 @@ namespace isc
     class UpdateProfiler
     {
     public:
+
         UpdateProfiler();
         void update(DeltaTime deltaTime);
         void report();
