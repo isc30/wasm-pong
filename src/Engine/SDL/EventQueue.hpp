@@ -11,18 +11,18 @@ namespace isc
     {
         namespace EventQueue
         {
-            static inline bool push(SDL_Event&& event)
+            inline bool push(SDL_Event&& event)
             {
                 return SDL_PushEvent(&event) == 1;
             }
 
-            static inline bool poll(SDL_Event& event)
+            inline bool poll(SDL_Event& event)
             {
                 return SDL_PollEvent(&event) == 1;
             }
 
             template<typename TPredicate>
-            static bool any(
+            bool any(
                 const Callable<TPredicate, bool(const SDL_Event&)>& predicate)
             {
                 bool result = false;

@@ -19,7 +19,7 @@ namespace isc
         using Object = std::unique_ptr<TObject, ObjectDestroy<TObject>>;
 
         template<typename TObject>
-        static Object<TObject> makeObject(
+        Object<TObject> makeObject(
             TObject* instance,
             const ObjectDestroy<TObject> destroy)
         {
@@ -32,7 +32,7 @@ namespace isc
         }
 
         template<typename TObject, typename... TArgs>
-        static Object<TObject> makeObject(
+        Object<TObject> makeObject(
             const ObjectCreate<TObject, TArgs...> create,
             const ObjectDestroy<TObject> destroy,
             TArgs&&... args)
@@ -43,7 +43,7 @@ namespace isc
         }
 
         template<typename TObject>
-        static Object<TObject> makeNullObject()
+        Object<TObject> makeNullObject()
         {
             static const auto destructor = [](TObject*) {};
             return Object<TObject>(nullptr, destructor);
