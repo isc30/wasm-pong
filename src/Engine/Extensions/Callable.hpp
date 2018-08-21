@@ -26,17 +26,19 @@ struct CallableMetadata<TReturn(TClass::*)(TArgs...) const>
     using args_tuple_t = std::tuple<TArgs...>;
     using ptr_t = TReturn(*)(TArgs...);
 
-    static ptr_t generatePointer(const TClass& instance)
+    // Beware! this function makes a copy of the closure! and of the arguments when called!
+    static ptr_t generatePointer(const TClass& closure)
     {
-        static TClass staticInstanceCopy = instance;
+        static TClass staticClosureCopy = closure;
 
         return [](TArgs... args)
         {
-            return staticInstanceCopy(args...);
+            return staticClosureCopy(args...);
         };
     }
 };
 
+// Beware! this function makes a copy of the closure! and of the arguments when called!
 template<typename TCallable>
 auto* callableToPointer(const TCallable& callable)
 {
