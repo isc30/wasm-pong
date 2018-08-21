@@ -23,7 +23,7 @@ set-g++:
 set-wasm:
 	$(eval LIBRARIES := -I ./externals/glm)
 	$(eval LDFLAGS := -O3 -s USE_WEBGL2=1 -s USE_SDL=2)
-	$(eval WARNINGS := -Wall -Wextra -Wwrite-strings -Werror -Wno-unused-parameter)
+	$(eval WARNINGS := -Wall -Wextra -Wwrite-strings -Werror -Wno-unused-parameter -Wno-unused-variable)
 	$(eval TARGETFLAGS := -s DISABLE_EXCEPTION_CATCHING=0 -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s SAFE_HEAP=1)
 	$(eval CXX := em++)
 	$(eval CXXFLAGS := -std=c++14 $(WARNINGS) $(LDFLAGS) $(TARGETFLAGS) $(LIBRARIES) -I $(SRC_DIR))

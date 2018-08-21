@@ -77,13 +77,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;..\..\src;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;..\..\externals\entt\src\entt;..\..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\externals\SDL2-2.0.8\lib\x64;$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;..\..\src;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\externals\SDL2-2.0.8\include;..\..\externals\glad-es3.0\include;..\..\externals\glm;..\..\externals\entt\src\entt;..\..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\externals\SDL2-2.0.8\lib\x64;$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
@@ -103,7 +103,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp14</LanguageStandard>
-      <PreprocessorDefinitions>DEBUG;DEBUG_OPENGL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>sdl2.lib;sdl2main.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -135,6 +135,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp14</LanguageStandard>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

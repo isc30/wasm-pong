@@ -15,6 +15,7 @@
 #include <Engine/Extensions/Optional.hpp>
 #include <Engine/GameLoop.hpp>
 #include <Engine/IO/Window.hpp>
+#include <Engine/IO/ResourceProvider.hpp>
 #include <Engine/SDL/EventQueue.hpp>
 
 #include <Engine/Graphics/OpenGL/OpenGL.hpp>
@@ -298,6 +299,7 @@ struct GameLoop
     SDL_Renderer* renderer;
     SDL_Surface* surface;
     isc::UpdateProfiler profiler;
+    isc::ResourceProvider resourceProvider;
 
     nonstd::optional<isc::vec2<float>> touchLocation;
 
@@ -314,6 +316,10 @@ struct GameLoop
         quad = prepareQuad();
         triangle = prepareTriangle();
         cube = prepareCube();
+
+        resourceProvider.add("./resources/shaders/test.vsh");
+        resourceProvider.add("./resources/shaders/error.vsh");
+        resourceProvider.prepare();
     }
 
     void init()
@@ -337,6 +343,11 @@ struct GameLoop
 
     bool loop(DeltaTime deltaTime)
     {
+        if (resourceProvider.complete)
+        {
+            std::cout << "ALL LOADED" << std::endl;
+        }
+
         profiler.update(deltaTime);
 
         SDL_Event event;
