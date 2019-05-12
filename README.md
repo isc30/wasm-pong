@@ -4,7 +4,7 @@ This is a test project to show the capabilities of WASM + WebGL 2.0
 
 ## Demo!
 
-The demo can be found in: http://blog.codeisc.com/wasm-pong/demo/
+The demo can be found in: http://isc30.github.io/wasm-pong/demo/
 
 ## Features
 
