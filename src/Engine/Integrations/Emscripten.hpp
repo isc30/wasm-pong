@@ -10,12 +10,24 @@
 
 namespace emscripten
 {
-    using Callback = void(*)(void*);
+    template<typename TReturn>
+    using Callback = TReturn(*)(void*);
+
+    template<typename TReturn, typename TCallable>
+    Callback<TReturn> getCallback(const TCallable&)
+    {
+        static Callback<TReturn> executor = [](void* lambda) -> TReturn
+        {
+            return (*static_cast<TCallable*>(lambda))();
+        };
+
+        return executor;
+    }
 
     template<typename TCallable>
-    Callback getCallback(const TCallable&)
+    Callback<void> getCallback(const TCallable&)
     {
-        static Callback executor = [](void* lambda)
+        static Callback<void> executor = [](void* lambda) -> void
         {
             (*static_cast<TCallable*>(lambda))();
         };

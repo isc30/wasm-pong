@@ -341,7 +341,7 @@ struct GameLoop
         std::cout << "[GameLoop] End" << std::endl;
     }
 
-    bool loop(DeltaTime deltaTime)
+    bool update(DeltaTime deltaTime)
     {
         if (resourceProvider.complete)
         {
@@ -409,6 +409,11 @@ struct GameLoop
             }
         }
 
+        return window.isOpen();
+    }
+
+    void render(DeltaTime deltaTime)
+    {
         // Clear the screen
         /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -471,8 +476,13 @@ struct GameLoop
         });
 
         window.swap();
+    }
 
-        return window.isOpen();
+    bool loop(DeltaTime deltaTime)
+    {
+        render(deltaTime);
+
+        return update(deltaTime);;
     }
 };
 

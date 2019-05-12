@@ -16,7 +16,7 @@ constexpr int initGameLoop(TArgs&&... args)
     DeltaTime deltaTime = std::chrono::nanoseconds(0);
 
 #ifdef __EMSCRIPTEN__
-    auto loopCallback = [&]()
+    auto loopCallback = [&]() -> void
     {
         auto newTime = std::chrono::steady_clock::now();
         deltaTime = newTime - previousTime;
