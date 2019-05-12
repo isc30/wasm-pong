@@ -345,62 +345,6 @@ var Runtime = {
  __dummy__: 0
 };
 Module["Runtime"] = Runtime;
-function getSafeHeapType(bytes, isFloat) {
- switch (bytes) {
- case 1:
-  return "i8";
- case 2:
-  return "i16";
- case 4:
-  return isFloat ? "float" : "i32";
- case 8:
-  return "double";
- default:
-  assert(0);
- }
-}
-function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
- if (dest <= 0) abort("segmentation fault storing " + bytes + " bytes to address " + dest);
- if (dest % bytes !== 0) abort("alignment error storing to address " + dest + ", which was expected to be aligned to a multiple of " + bytes);
- if (staticSealed) {
-  if (dest + bytes > HEAP32[DYNAMICTOP_PTR >> 2]) abort("segmentation fault, exceeded the top of the available dynamic heap when storing " + bytes + " bytes to address " + dest + ". STATICTOP=" + STATICTOP + ", DYNAMICTOP=" + HEAP32[DYNAMICTOP_PTR >> 2]);
-  assert(DYNAMICTOP_PTR);
-  assert(HEAP32[DYNAMICTOP_PTR >> 2] <= TOTAL_MEMORY);
- } else {
-  if (dest + bytes > STATICTOP) abort("segmentation fault, exceeded the top of the available static heap when storing " + bytes + " bytes to address " + dest + ". STATICTOP=" + STATICTOP);
- }
- setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
-}
-function SAFE_HEAP_STORE_D(dest, value, bytes) {
- SAFE_HEAP_STORE(dest, value, bytes, true);
-}
-function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
- if (dest <= 0) abort("segmentation fault loading " + bytes + " bytes from address " + dest);
- if (dest % bytes !== 0) abort("alignment error loading from address " + dest + ", which was expected to be aligned to a multiple of " + bytes);
- if (staticSealed) {
-  if (dest + bytes > HEAP32[DYNAMICTOP_PTR >> 2]) abort("segmentation fault, exceeded the top of the available dynamic heap when loading " + bytes + " bytes from address " + dest + ". STATICTOP=" + STATICTOP + ", DYNAMICTOP=" + HEAP32[DYNAMICTOP_PTR >> 2]);
-  assert(DYNAMICTOP_PTR);
-  assert(HEAP32[DYNAMICTOP_PTR >> 2] <= TOTAL_MEMORY);
- } else {
-  if (dest + bytes > STATICTOP) abort("segmentation fault, exceeded the top of the available static heap when loading " + bytes + " bytes from address " + dest + ". STATICTOP=" + STATICTOP);
- }
- var type = getSafeHeapType(bytes, isFloat);
- var ret = getValue(dest, type, 1);
- if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
- return ret;
-}
-function SAFE_HEAP_LOAD_D(dest, bytes, unsigned) {
- return SAFE_HEAP_LOAD(dest, bytes, unsigned, true);
-}
-function segfault() {
- abort("segmentation fault");
-}
-function alignfault() {
- abort("alignment fault");
-}
-function ftfault() {
- abort("Function table mask error");
-}
 var ABORT = 0;
 var EXITSTATUS = 0;
 function assert(condition, text) {
@@ -544,102 +488,53 @@ Module["cwrap"] = cwrap;
 function setValue(ptr, value, type, noSafe) {
  type = type || "i8";
  if (type.charAt(type.length - 1) === "*") type = "i32";
- if (noSafe) {
-  switch (type) {
-  case "i1":
-   HEAP8[ptr >> 0] = value;
-   break;
-  case "i8":
-   HEAP8[ptr >> 0] = value;
-   break;
-  case "i16":
-   HEAP16[ptr >> 1] = value;
-   break;
-  case "i32":
-   HEAP32[ptr >> 2] = value;
-   break;
-  case "i64":
-   tempI64 = [ value >>> 0, (tempDouble = value, +Math_abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math_min(+Math_floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math_ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], HEAP32[ptr >> 2] = tempI64[0], HEAP32[ptr + 4 >> 2] = tempI64[1];
-   break;
-  case "float":
-   HEAPF32[ptr >> 2] = value;
-   break;
-  case "double":
-   HEAPF64[ptr >> 3] = value;
-   break;
-  default:
-   abort("invalid type for setValue: " + type);
-  }
- } else {
-  switch (type) {
-  case "i1":
-   SAFE_HEAP_STORE(ptr | 0, value | 0, 1);
-   break;
-  case "i8":
-   SAFE_HEAP_STORE(ptr | 0, value | 0, 1);
-   break;
-  case "i16":
-   SAFE_HEAP_STORE(ptr | 0, value | 0, 2);
-   break;
-  case "i32":
-   SAFE_HEAP_STORE(ptr | 0, value | 0, 4);
-   break;
-  case "i64":
-   tempI64 = [ value >>> 0, (tempDouble = value, +Math_abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math_min(+Math_floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math_ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], SAFE_HEAP_STORE(ptr | 0, tempI64[0] | 0, 4), SAFE_HEAP_STORE(ptr + 4 | 0, tempI64[1] | 0, 4);
-   break;
-  case "float":
-   SAFE_HEAP_STORE_D(ptr | 0, Math_fround(value), 4);
-   break;
-  case "double":
-   SAFE_HEAP_STORE_D(ptr | 0, +value, 8);
-   break;
-  default:
-   abort("invalid type for setValue: " + type);
-  }
+ switch (type) {
+ case "i1":
+  HEAP8[ptr >> 0] = value;
+  break;
+ case "i8":
+  HEAP8[ptr >> 0] = value;
+  break;
+ case "i16":
+  HEAP16[ptr >> 1] = value;
+  break;
+ case "i32":
+  HEAP32[ptr >> 2] = value;
+  break;
+ case "i64":
+  tempI64 = [ value >>> 0, (tempDouble = value, +Math_abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math_min(+Math_floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math_ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], HEAP32[ptr >> 2] = tempI64[0], HEAP32[ptr + 4 >> 2] = tempI64[1];
+  break;
+ case "float":
+  HEAPF32[ptr >> 2] = value;
+  break;
+ case "double":
+  HEAPF64[ptr >> 3] = value;
+  break;
+ default:
+  abort("invalid type for setValue: " + type);
  }
 }
 Module["setValue"] = setValue;
 function getValue(ptr, type, noSafe) {
  type = type || "i8";
  if (type.charAt(type.length - 1) === "*") type = "i32";
- if (noSafe) {
-  switch (type) {
-  case "i1":
-   return HEAP8[ptr >> 0];
-  case "i8":
-   return HEAP8[ptr >> 0];
-  case "i16":
-   return HEAP16[ptr >> 1];
-  case "i32":
-   return HEAP32[ptr >> 2];
-  case "i64":
-   return HEAP32[ptr >> 2];
-  case "float":
-   return HEAPF32[ptr >> 2];
-  case "double":
-   return HEAPF64[ptr >> 3];
-  default:
-   abort("invalid type for setValue: " + type);
-  }
- } else {
-  switch (type) {
-  case "i1":
-   return SAFE_HEAP_LOAD(ptr | 0, 1, 0) | 0;
-  case "i8":
-   return SAFE_HEAP_LOAD(ptr | 0, 1, 0) | 0;
-  case "i16":
-   return SAFE_HEAP_LOAD(ptr | 0, 2, 0) | 0;
-  case "i32":
-   return SAFE_HEAP_LOAD(ptr | 0, 4, 0) | 0;
-  case "i64":
-   return SAFE_HEAP_LOAD(ptr | 0, 8, 0) | 0;
-  case "float":
-   return Math_fround(SAFE_HEAP_LOAD_D(ptr | 0, 4, 0));
-  case "double":
-   return +SAFE_HEAP_LOAD_D(ptr | 0, 8, 0);
-  default:
-   abort("invalid type for setValue: " + type);
-  }
+ switch (type) {
+ case "i1":
+  return HEAP8[ptr >> 0];
+ case "i8":
+  return HEAP8[ptr >> 0];
+ case "i16":
+  return HEAP16[ptr >> 1];
+ case "i32":
+  return HEAP32[ptr >> 2];
+ case "i64":
+  return HEAP32[ptr >> 2];
+ case "float":
+  return HEAPF32[ptr >> 2];
+ case "double":
+  return HEAPF64[ptr >> 3];
+ default:
+  abort("invalid type for setValue: " + type);
  }
  return null;
 }
@@ -725,7 +620,7 @@ function Pointer_stringify(ptr, length) {
  var t;
  var i = 0;
  while (1) {
-  t = SAFE_HEAP_LOAD(ptr + i | 0, 1, 1) | 0;
+  t = HEAPU8[ptr + i >> 0];
   hasUtf |= t;
   if (t == 0 && !length) break;
   i++;
@@ -750,7 +645,7 @@ Module["Pointer_stringify"] = Pointer_stringify;
 function AsciiToString(ptr) {
  var str = "";
  while (1) {
-  var ch = SAFE_HEAP_LOAD(ptr++ | 0, 1, 0) | 0;
+  var ch = HEAP8[ptr++ >> 0];
   if (!ch) return str;
   str += String.fromCharCode(ch);
  }
@@ -1162,17 +1057,11 @@ function writeArrayToMemory(array, buffer) {
 Module["writeArrayToMemory"] = writeArrayToMemory;
 function writeAsciiToMemory(str, buffer, dontAddNull) {
  for (var i = 0; i < str.length; ++i) {
-  SAFE_HEAP_STORE(buffer++ | 0, str.charCodeAt(i) | 0, 1);
+  HEAP8[buffer++ >> 0] = str.charCodeAt(i);
  }
- if (!dontAddNull) SAFE_HEAP_STORE(buffer | 0, 0 | 0, 1);
+ if (!dontAddNull) HEAP8[buffer >> 0] = 0;
 }
 Module["writeAsciiToMemory"] = writeAsciiToMemory;
-function unSign(value, bits, ignore) {
- if (value >= 0) {
-  return value;
- }
- return bits <= 32 ? 2 * Math.abs(1 << bits - 1) + value : Math.pow(2, bits) + value;
-}
 if (!Math["imul"] || Math["imul"](4294967295, 5) !== -5) Math["imul"] = function imul(a, b) {
  var ah = a >>> 16;
  var al = a & 65535;
@@ -1942,17 +1831,17 @@ var JSEvents = {
    var e = event || window.event;
    stringToUTF8(e.key ? e.key : "", JSEvents.keyEvent + 0, 32);
    stringToUTF8(e.code ? e.code : "", JSEvents.keyEvent + 32, 32);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 64 | 0, e.location | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 68 | 0, e.ctrlKey | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 72 | 0, e.shiftKey | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 76 | 0, e.altKey | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 80 | 0, e.metaKey | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 84 | 0, e.repeat | 0, 4);
+   HEAP32[JSEvents.keyEvent + 64 >> 2] = e.location;
+   HEAP32[JSEvents.keyEvent + 68 >> 2] = e.ctrlKey;
+   HEAP32[JSEvents.keyEvent + 72 >> 2] = e.shiftKey;
+   HEAP32[JSEvents.keyEvent + 76 >> 2] = e.altKey;
+   HEAP32[JSEvents.keyEvent + 80 >> 2] = e.metaKey;
+   HEAP32[JSEvents.keyEvent + 84 >> 2] = e.repeat;
    stringToUTF8(e.locale ? e.locale : "", JSEvents.keyEvent + 88, 32);
    stringToUTF8(e.char ? e.char : "", JSEvents.keyEvent + 120, 32);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 152 | 0, e.charCode | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 156 | 0, e.keyCode | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.keyEvent + 160 | 0, e.which | 0, 4);
+   HEAP32[JSEvents.keyEvent + 152 >> 2] = e.charCode;
+   HEAP32[JSEvents.keyEvent + 156 >> 2] = e.keyCode;
+   HEAP32[JSEvents.keyEvent + 160 >> 2] = e.which;
    var shouldCancel = Module["dynCall_iiii"](callbackfunc, eventTypeId, JSEvents.keyEvent, userData);
    if (shouldCancel) {
     e.preventDefault();
@@ -1975,34 +1864,34 @@ var JSEvents = {
   };
  }),
  fillMouseEventData: (function(eventStruct, e, target) {
-  SAFE_HEAP_STORE_D(eventStruct | 0, +JSEvents.tick(), 8);
-  SAFE_HEAP_STORE(eventStruct + 8 | 0, e.screenX | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 12 | 0, e.screenY | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 16 | 0, e.clientX | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 20 | 0, e.clientY | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 24 | 0, e.ctrlKey | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 28 | 0, e.shiftKey | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 32 | 0, e.altKey | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 36 | 0, e.metaKey | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 40 | 0, e.button | 0, 2);
-  SAFE_HEAP_STORE(eventStruct + 42 | 0, e.buttons | 0, 2);
-  SAFE_HEAP_STORE(eventStruct + 44 | 0, (e["movementX"] || e["mozMovementX"] || e["webkitMovementX"] || e.screenX - JSEvents.previousScreenX) | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 48 | 0, (e["movementY"] || e["mozMovementY"] || e["webkitMovementY"] || e.screenY - JSEvents.previousScreenY) | 0, 4);
+  HEAPF64[eventStruct >> 3] = JSEvents.tick();
+  HEAP32[eventStruct + 8 >> 2] = e.screenX;
+  HEAP32[eventStruct + 12 >> 2] = e.screenY;
+  HEAP32[eventStruct + 16 >> 2] = e.clientX;
+  HEAP32[eventStruct + 20 >> 2] = e.clientY;
+  HEAP32[eventStruct + 24 >> 2] = e.ctrlKey;
+  HEAP32[eventStruct + 28 >> 2] = e.shiftKey;
+  HEAP32[eventStruct + 32 >> 2] = e.altKey;
+  HEAP32[eventStruct + 36 >> 2] = e.metaKey;
+  HEAP16[eventStruct + 40 >> 1] = e.button;
+  HEAP16[eventStruct + 42 >> 1] = e.buttons;
+  HEAP32[eventStruct + 44 >> 2] = e["movementX"] || e["mozMovementX"] || e["webkitMovementX"] || e.screenX - JSEvents.previousScreenX;
+  HEAP32[eventStruct + 48 >> 2] = e["movementY"] || e["mozMovementY"] || e["webkitMovementY"] || e.screenY - JSEvents.previousScreenY;
   if (Module["canvas"]) {
    var rect = Module["canvas"].getBoundingClientRect();
-   SAFE_HEAP_STORE(eventStruct + 60 | 0, e.clientX - rect.left | 0, 4);
-   SAFE_HEAP_STORE(eventStruct + 64 | 0, e.clientY - rect.top | 0, 4);
+   HEAP32[eventStruct + 60 >> 2] = e.clientX - rect.left;
+   HEAP32[eventStruct + 64 >> 2] = e.clientY - rect.top;
   } else {
-   SAFE_HEAP_STORE(eventStruct + 60 | 0, 0 | 0, 4);
-   SAFE_HEAP_STORE(eventStruct + 64 | 0, 0 | 0, 4);
+   HEAP32[eventStruct + 60 >> 2] = 0;
+   HEAP32[eventStruct + 64 >> 2] = 0;
   }
   if (target) {
    var rect = JSEvents.getBoundingClientRectOrZeros(target);
-   SAFE_HEAP_STORE(eventStruct + 52 | 0, e.clientX - rect.left | 0, 4);
-   SAFE_HEAP_STORE(eventStruct + 56 | 0, e.clientY - rect.top | 0, 4);
+   HEAP32[eventStruct + 52 >> 2] = e.clientX - rect.left;
+   HEAP32[eventStruct + 56 >> 2] = e.clientY - rect.top;
   } else {
-   SAFE_HEAP_STORE(eventStruct + 52 | 0, 0 | 0, 4);
-   SAFE_HEAP_STORE(eventStruct + 56 | 0, 0 | 0, 4);
+   HEAP32[eventStruct + 52 >> 2] = 0;
+   HEAP32[eventStruct + 56 >> 2] = 0;
   }
   if (e.type !== "wheel" && e.type !== "mousewheel") {
    JSEvents.previousScreenX = e.screenX;
@@ -2041,10 +1930,10 @@ var JSEvents = {
   var wheelHandlerFunc = (function(event) {
    var e = event || window.event;
    JSEvents.fillMouseEventData(JSEvents.wheelEvent, e, target);
-   SAFE_HEAP_STORE_D(JSEvents.wheelEvent + 72 | 0, +e["deltaX"], 8);
-   SAFE_HEAP_STORE_D(JSEvents.wheelEvent + 80 | 0, +e["deltaY"], 8);
-   SAFE_HEAP_STORE_D(JSEvents.wheelEvent + 88 | 0, +e["deltaZ"], 8);
-   SAFE_HEAP_STORE(JSEvents.wheelEvent + 96 | 0, e["deltaMode"] | 0, 4);
+   HEAPF64[JSEvents.wheelEvent + 72 >> 3] = e["deltaX"];
+   HEAPF64[JSEvents.wheelEvent + 80 >> 3] = e["deltaY"];
+   HEAPF64[JSEvents.wheelEvent + 88 >> 3] = e["deltaZ"];
+   HEAP32[JSEvents.wheelEvent + 96 >> 2] = e["deltaMode"];
    var shouldCancel = Module["dynCall_iiii"](callbackfunc, eventTypeId, JSEvents.wheelEvent, userData);
    if (shouldCancel) {
     e.preventDefault();
@@ -2053,10 +1942,10 @@ var JSEvents = {
   var mouseWheelHandlerFunc = (function(event) {
    var e = event || window.event;
    JSEvents.fillMouseEventData(JSEvents.wheelEvent, e, target);
-   SAFE_HEAP_STORE_D(JSEvents.wheelEvent + 72 | 0, +(e["wheelDeltaX"] || 0), 8);
-   SAFE_HEAP_STORE_D(JSEvents.wheelEvent + 80 | 0, +-(e["wheelDeltaY"] ? e["wheelDeltaY"] : e["wheelDelta"]), 8);
-   SAFE_HEAP_STORE_D(JSEvents.wheelEvent + 88 | 0, +0, 8);
-   SAFE_HEAP_STORE(JSEvents.wheelEvent + 96 | 0, 0 | 0, 4);
+   HEAPF64[JSEvents.wheelEvent + 72 >> 3] = e["wheelDeltaX"] || 0;
+   HEAPF64[JSEvents.wheelEvent + 80 >> 3] = -(e["wheelDeltaY"] ? e["wheelDeltaY"] : e["wheelDelta"]);
+   HEAPF64[JSEvents.wheelEvent + 88 >> 3] = 0;
+   HEAP32[JSEvents.wheelEvent + 96 >> 2] = 0;
    var shouldCancel = Module["dynCall_iiii"](callbackfunc, eventTypeId, JSEvents.wheelEvent, userData);
    if (shouldCancel) {
     e.preventDefault();
@@ -2096,15 +1985,15 @@ var JSEvents = {
     return;
    }
    var scrollPos = JSEvents.pageScrollPos();
-   SAFE_HEAP_STORE(JSEvents.uiEvent | 0, e.detail | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.uiEvent + 4 | 0, document.body.clientWidth | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.uiEvent + 8 | 0, document.body.clientHeight | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.uiEvent + 12 | 0, window.innerWidth | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.uiEvent + 16 | 0, window.innerHeight | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.uiEvent + 20 | 0, window.outerWidth | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.uiEvent + 24 | 0, window.outerHeight | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.uiEvent + 28 | 0, scrollPos[0] | 0, 4);
-   SAFE_HEAP_STORE(JSEvents.uiEvent + 32 | 0, scrollPos[1] | 0, 4);
+   HEAP32[JSEvents.uiEvent >> 2] = e.detail;
+   HEAP32[JSEvents.uiEvent + 4 >> 2] = document.body.clientWidth;
+   HEAP32[JSEvents.uiEvent + 8 >> 2] = document.body.clientHeight;
+   HEAP32[JSEvents.uiEvent + 12 >> 2] = window.innerWidth;
+   HEAP32[JSEvents.uiEvent + 16 >> 2] = window.innerHeight;
+   HEAP32[JSEvents.uiEvent + 20 >> 2] = window.outerWidth;
+   HEAP32[JSEvents.uiEvent + 24 >> 2] = window.outerHeight;
+   HEAP32[JSEvents.uiEvent + 28 >> 2] = scrollPos[0];
+   HEAP32[JSEvents.uiEvent + 32 >> 2] = scrollPos[1];
    var shouldCancel = Module["dynCall_iiii"](callbackfunc, eventTypeId, JSEvents.uiEvent, userData);
    if (shouldCancel) {
     e.preventDefault();
@@ -2160,11 +2049,11 @@ var JSEvents = {
   }
   var handlerFunc = (function(event) {
    var e = event || window.event;
-   SAFE_HEAP_STORE_D(JSEvents.deviceOrientationEvent | 0, +JSEvents.tick(), 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceOrientationEvent + 8 | 0, +e.alpha, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceOrientationEvent + 16 | 0, +e.beta, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceOrientationEvent + 24 | 0, +e.gamma, 8);
-   SAFE_HEAP_STORE(JSEvents.deviceOrientationEvent + 32 | 0, e.absolute | 0, 4);
+   HEAPF64[JSEvents.deviceOrientationEvent >> 3] = JSEvents.tick();
+   HEAPF64[JSEvents.deviceOrientationEvent + 8 >> 3] = e.alpha;
+   HEAPF64[JSEvents.deviceOrientationEvent + 16 >> 3] = e.beta;
+   HEAPF64[JSEvents.deviceOrientationEvent + 24 >> 3] = e.gamma;
+   HEAP32[JSEvents.deviceOrientationEvent + 32 >> 2] = e.absolute;
    var shouldCancel = Module["dynCall_iiii"](callbackfunc, eventTypeId, JSEvents.deviceOrientationEvent, userData);
    if (shouldCancel) {
     e.preventDefault();
@@ -2186,16 +2075,16 @@ var JSEvents = {
   }
   var handlerFunc = (function(event) {
    var e = event || window.event;
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent | 0, +JSEvents.tick(), 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 8 | 0, +e.acceleration.x, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 16 | 0, +e.acceleration.y, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 24 | 0, +e.acceleration.z, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 32 | 0, +e.accelerationIncludingGravity.x, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 40 | 0, +e.accelerationIncludingGravity.y, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 48 | 0, +e.accelerationIncludingGravity.z, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 56 | 0, +e.rotationRate.alpha, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 64 | 0, +e.rotationRate.beta, 8);
-   SAFE_HEAP_STORE_D(JSEvents.deviceMotionEvent + 72 | 0, +e.rotationRate.gamma, 8);
+   HEAPF64[JSEvents.deviceMotionEvent >> 3] = JSEvents.tick();
+   HEAPF64[JSEvents.deviceMotionEvent + 8 >> 3] = e.acceleration.x;
+   HEAPF64[JSEvents.deviceMotionEvent + 16 >> 3] = e.acceleration.y;
+   HEAPF64[JSEvents.deviceMotionEvent + 24 >> 3] = e.acceleration.z;
+   HEAPF64[JSEvents.deviceMotionEvent + 32 >> 3] = e.accelerationIncludingGravity.x;
+   HEAPF64[JSEvents.deviceMotionEvent + 40 >> 3] = e.accelerationIncludingGravity.y;
+   HEAPF64[JSEvents.deviceMotionEvent + 48 >> 3] = e.accelerationIncludingGravity.z;
+   HEAPF64[JSEvents.deviceMotionEvent + 56 >> 3] = e.rotationRate.alpha;
+   HEAPF64[JSEvents.deviceMotionEvent + 64 >> 3] = e.rotationRate.beta;
+   HEAPF64[JSEvents.deviceMotionEvent + 72 >> 3] = e.rotationRate.gamma;
    var shouldCancel = Module["dynCall_iiii"](callbackfunc, eventTypeId, JSEvents.deviceMotionEvent, userData);
    if (shouldCancel) {
     e.preventDefault();
@@ -2223,8 +2112,8 @@ var JSEvents = {
   if (orientation == -1) {
    orientation = orientations2.indexOf(orientationString);
   }
-  SAFE_HEAP_STORE(eventStruct | 0, 1 << orientation | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 4 | 0, window.orientation | 0, 4);
+  HEAP32[eventStruct >> 2] = 1 << orientation;
+  HEAP32[eventStruct + 4 >> 2] = window.orientation;
  }),
  registerOrientationChangeEventCallback: (function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
   if (!JSEvents.orientationChangeEvent) {
@@ -2262,17 +2151,17 @@ var JSEvents = {
  fillFullscreenChangeEventData: (function(eventStruct, e) {
   var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
   var isFullscreen = !!fullscreenElement;
-  SAFE_HEAP_STORE(eventStruct | 0, isFullscreen | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 4 | 0, JSEvents.fullscreenEnabled() | 0, 4);
+  HEAP32[eventStruct >> 2] = isFullscreen;
+  HEAP32[eventStruct + 4 >> 2] = JSEvents.fullscreenEnabled();
   var reportedElement = isFullscreen ? fullscreenElement : JSEvents.previousFullscreenElement;
   var nodeName = JSEvents.getNodeNameForTarget(reportedElement);
   var id = reportedElement && reportedElement.id ? reportedElement.id : "";
   stringToUTF8(nodeName, eventStruct + 8, 128);
   stringToUTF8(id, eventStruct + 136, 128);
-  SAFE_HEAP_STORE(eventStruct + 264 | 0, (reportedElement ? reportedElement.clientWidth : 0) | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 268 | 0, (reportedElement ? reportedElement.clientHeight : 0) | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 272 | 0, screen.width | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 276 | 0, screen.height | 0, 4);
+  HEAP32[eventStruct + 264 >> 2] = reportedElement ? reportedElement.clientWidth : 0;
+  HEAP32[eventStruct + 268 >> 2] = reportedElement ? reportedElement.clientHeight : 0;
+  HEAP32[eventStruct + 272 >> 2] = screen.width;
+  HEAP32[eventStruct + 276 >> 2] = screen.height;
   if (isFullscreen) {
    JSEvents.previousFullscreenElement = fullscreenElement;
   }
@@ -2378,7 +2267,7 @@ var JSEvents = {
  fillPointerlockChangeEventData: (function(eventStruct, e) {
   var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
   var isPointerlocked = !!pointerLockElement;
-  SAFE_HEAP_STORE(eventStruct | 0, isPointerlocked | 0, 4);
+  HEAP32[eventStruct >> 2] = isPointerlocked;
   var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
   var id = pointerLockElement && pointerLockElement.id ? pointerLockElement.id : "";
   stringToUTF8(nodeName, eventStruct + 4, 128);
@@ -2455,8 +2344,8 @@ var JSEvents = {
  fillVisibilityChangeEventData: (function(eventStruct, e) {
   var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
   var visibilityState = visibilityStates.indexOf(document.visibilityState);
-  SAFE_HEAP_STORE(eventStruct | 0, document.hidden | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 4 | 0, visibilityState | 0, 4);
+  HEAP32[eventStruct >> 2] = document.hidden;
+  HEAP32[eventStruct + 4 >> 2] = visibilityState;
  }),
  registerVisibilityChangeEventCallback: (function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
   if (!JSEvents.visibilityChangeEvent) {
@@ -2507,40 +2396,40 @@ var JSEvents = {
     touches[touch.identifier].onTarget = true;
    }
    var ptr = JSEvents.touchEvent;
-   SAFE_HEAP_STORE(ptr + 4 | 0, e.ctrlKey | 0, 4);
-   SAFE_HEAP_STORE(ptr + 8 | 0, e.shiftKey | 0, 4);
-   SAFE_HEAP_STORE(ptr + 12 | 0, e.altKey | 0, 4);
-   SAFE_HEAP_STORE(ptr + 16 | 0, e.metaKey | 0, 4);
+   HEAP32[ptr + 4 >> 2] = e.ctrlKey;
+   HEAP32[ptr + 8 >> 2] = e.shiftKey;
+   HEAP32[ptr + 12 >> 2] = e.altKey;
+   HEAP32[ptr + 16 >> 2] = e.metaKey;
    ptr += 20;
    var canvasRect = Module["canvas"] ? Module["canvas"].getBoundingClientRect() : undefined;
    var targetRect = JSEvents.getBoundingClientRectOrZeros(target);
    var numTouches = 0;
    for (var i in touches) {
     var t = touches[i];
-    SAFE_HEAP_STORE(ptr | 0, t.identifier | 0, 4);
-    SAFE_HEAP_STORE(ptr + 4 | 0, t.screenX | 0, 4);
-    SAFE_HEAP_STORE(ptr + 8 | 0, t.screenY | 0, 4);
-    SAFE_HEAP_STORE(ptr + 12 | 0, t.clientX | 0, 4);
-    SAFE_HEAP_STORE(ptr + 16 | 0, t.clientY | 0, 4);
-    SAFE_HEAP_STORE(ptr + 20 | 0, t.pageX | 0, 4);
-    SAFE_HEAP_STORE(ptr + 24 | 0, t.pageY | 0, 4);
-    SAFE_HEAP_STORE(ptr + 28 | 0, t.changed | 0, 4);
-    SAFE_HEAP_STORE(ptr + 32 | 0, t.onTarget | 0, 4);
+    HEAP32[ptr >> 2] = t.identifier;
+    HEAP32[ptr + 4 >> 2] = t.screenX;
+    HEAP32[ptr + 8 >> 2] = t.screenY;
+    HEAP32[ptr + 12 >> 2] = t.clientX;
+    HEAP32[ptr + 16 >> 2] = t.clientY;
+    HEAP32[ptr + 20 >> 2] = t.pageX;
+    HEAP32[ptr + 24 >> 2] = t.pageY;
+    HEAP32[ptr + 28 >> 2] = t.changed;
+    HEAP32[ptr + 32 >> 2] = t.onTarget;
     if (canvasRect) {
-     SAFE_HEAP_STORE(ptr + 44 | 0, t.clientX - canvasRect.left | 0, 4);
-     SAFE_HEAP_STORE(ptr + 48 | 0, t.clientY - canvasRect.top | 0, 4);
+     HEAP32[ptr + 44 >> 2] = t.clientX - canvasRect.left;
+     HEAP32[ptr + 48 >> 2] = t.clientY - canvasRect.top;
     } else {
-     SAFE_HEAP_STORE(ptr + 44 | 0, 0 | 0, 4);
-     SAFE_HEAP_STORE(ptr + 48 | 0, 0 | 0, 4);
+     HEAP32[ptr + 44 >> 2] = 0;
+     HEAP32[ptr + 48 >> 2] = 0;
     }
-    SAFE_HEAP_STORE(ptr + 36 | 0, t.clientX - targetRect.left | 0, 4);
-    SAFE_HEAP_STORE(ptr + 40 | 0, t.clientY - targetRect.top | 0, 4);
+    HEAP32[ptr + 36 >> 2] = t.clientX - targetRect.left;
+    HEAP32[ptr + 40 >> 2] = t.clientY - targetRect.top;
     ptr += 52;
     if (++numTouches >= 32) {
      break;
     }
    }
-   SAFE_HEAP_STORE(JSEvents.touchEvent | 0, numTouches | 0, 4);
+   HEAP32[JSEvents.touchEvent >> 2] = numTouches;
    var shouldCancel = Module["dynCall_iiii"](callbackfunc, eventTypeId, JSEvents.touchEvent, userData);
    if (shouldCancel) {
     e.preventDefault();
@@ -2557,28 +2446,28 @@ var JSEvents = {
   JSEvents.registerOrRemoveHandler(eventHandler);
  }),
  fillGamepadEventData: (function(eventStruct, e) {
-  SAFE_HEAP_STORE_D(eventStruct | 0, +e.timestamp, 8);
+  HEAPF64[eventStruct >> 3] = e.timestamp;
   for (var i = 0; i < e.axes.length; ++i) {
-   SAFE_HEAP_STORE_D(eventStruct + i * 8 + 16 | 0, +e.axes[i], 8);
+   HEAPF64[eventStruct + i * 8 + 16 >> 3] = e.axes[i];
   }
   for (var i = 0; i < e.buttons.length; ++i) {
    if (typeof e.buttons[i] === "object") {
-    SAFE_HEAP_STORE_D(eventStruct + i * 8 + 528 | 0, +e.buttons[i].value, 8);
+    HEAPF64[eventStruct + i * 8 + 528 >> 3] = e.buttons[i].value;
    } else {
-    SAFE_HEAP_STORE_D(eventStruct + i * 8 + 528 | 0, +e.buttons[i], 8);
+    HEAPF64[eventStruct + i * 8 + 528 >> 3] = e.buttons[i];
    }
   }
   for (var i = 0; i < e.buttons.length; ++i) {
    if (typeof e.buttons[i] === "object") {
-    SAFE_HEAP_STORE(eventStruct + i * 4 + 1040 | 0, e.buttons[i].pressed | 0, 4);
+    HEAP32[eventStruct + i * 4 + 1040 >> 2] = e.buttons[i].pressed;
    } else {
-    SAFE_HEAP_STORE(eventStruct + i * 4 + 1040 | 0, e.buttons[i] == 1 | 0, 4);
+    HEAP32[eventStruct + i * 4 + 1040 >> 2] = e.buttons[i] == 1;
    }
   }
-  SAFE_HEAP_STORE(eventStruct + 1296 | 0, e.connected | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 1300 | 0, e.index | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 8 | 0, e.axes.length | 0, 4);
-  SAFE_HEAP_STORE(eventStruct + 12 | 0, e.buttons.length | 0, 4);
+  HEAP32[eventStruct + 1296 >> 2] = e.connected;
+  HEAP32[eventStruct + 1300 >> 2] = e.index;
+  HEAP32[eventStruct + 8 >> 2] = e.axes.length;
+  HEAP32[eventStruct + 12 >> 2] = e.buttons.length;
   stringToUTF8(e.id, eventStruct + 1304, 64);
   stringToUTF8(e.mapping, eventStruct + 1368, 64);
  }),
@@ -2631,10 +2520,10 @@ var JSEvents = {
   return navigator.battery || navigator.mozBattery || navigator.webkitBattery;
  }),
  fillBatteryEventData: (function(eventStruct, e) {
-  SAFE_HEAP_STORE_D(eventStruct | 0, +e.chargingTime, 8);
-  SAFE_HEAP_STORE_D(eventStruct + 8 | 0, +e.dischargingTime, 8);
-  SAFE_HEAP_STORE_D(eventStruct + 16 | 0, +e.level, 8);
-  SAFE_HEAP_STORE(eventStruct + 24 | 0, e.charging | 0, 4);
+  HEAPF64[eventStruct >> 3] = e.chargingTime;
+  HEAPF64[eventStruct + 8 >> 3] = e.dischargingTime;
+  HEAPF64[eventStruct + 16 >> 3] = e.level;
+  HEAP32[eventStruct + 24 >> 2] = e.charging;
  }),
  registerBatteryEventCallback: (function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
   if (!JSEvents.batteryEvent) {
@@ -2741,14 +2630,14 @@ var GL = {
   for (var i = 0; i < count; ++i) {
    var frag;
    if (length) {
-    var len = SAFE_HEAP_LOAD(length + i * 4 | 0, 4, 0) | 0;
+    var len = HEAP32[length + i * 4 >> 2];
     if (len < 0) {
-     frag = Pointer_stringify(SAFE_HEAP_LOAD(string + i * 4 | 0, 4, 0) | 0);
+     frag = Pointer_stringify(HEAP32[string + i * 4 >> 2]);
     } else {
-     frag = Pointer_stringify(SAFE_HEAP_LOAD(string + i * 4 | 0, 4, 0) | 0, len);
+     frag = Pointer_stringify(HEAP32[string + i * 4 >> 2], len);
     }
    } else {
-    frag = Pointer_stringify(SAFE_HEAP_LOAD(string + i * 4 | 0, 4, 0) | 0);
+    frag = Pointer_stringify(HEAP32[string + i * 4 >> 2]);
    }
    source += frag;
   }
@@ -3550,17 +3439,17 @@ var Browser = {
  windowedHeight: 0,
  setFullscreenCanvasSize: (function() {
   if (typeof SDL != "undefined") {
-   var flags = SAFE_HEAP_LOAD(SDL.screen + Runtime.QUANTUM_SIZE * 0 | 0, 4, 1) | 0;
+   var flags = HEAPU32[SDL.screen + Runtime.QUANTUM_SIZE * 0 >> 2];
    flags = flags | 8388608;
-   SAFE_HEAP_STORE(SDL.screen + Runtime.QUANTUM_SIZE * 0 | 0, flags | 0, 4);
+   HEAP32[SDL.screen + Runtime.QUANTUM_SIZE * 0 >> 2] = flags;
   }
   Browser.updateResizeListeners();
  }),
  setWindowedCanvasSize: (function() {
   if (typeof SDL != "undefined") {
-   var flags = SAFE_HEAP_LOAD(SDL.screen + Runtime.QUANTUM_SIZE * 0 | 0, 4, 1) | 0;
+   var flags = HEAPU32[SDL.screen + Runtime.QUANTUM_SIZE * 0 >> 2];
    flags = flags & ~8388608;
-   SAFE_HEAP_STORE(SDL.screen + Runtime.QUANTUM_SIZE * 0 | 0, flags | 0, 4);
+   HEAP32[SDL.screen + Runtime.QUANTUM_SIZE * 0 >> 2] = flags;
   }
   Browser.updateResizeListeners();
  }),
@@ -3635,10 +3524,10 @@ var EGL = {
    return 0;
   }
   if (numConfigs) {
-   SAFE_HEAP_STORE(numConfigs | 0, 1 | 0, 4);
+   HEAP32[numConfigs >> 2] = 1;
   }
   if (config && config_size > 0) {
-   SAFE_HEAP_STORE(config | 0, 62002 | 0, 4);
+   HEAP32[config >> 2] = 62002;
   }
   EGL.setErrorCode(12288);
   return 1;
@@ -4053,7 +3942,7 @@ var ERRNO_MESSAGES = {
  131: "State not recoverable"
 };
 function ___setErrNo(value) {
- if (Module["___errno_location"]) SAFE_HEAP_STORE(Module["___errno_location"]() | 0, value | 0, 4);
+ if (Module["___errno_location"]) HEAP32[Module["___errno_location"]() >> 2] = value;
  return value;
 }
 var PATH = {
@@ -7097,25 +6986,25 @@ var SYSCALLS = {
    }
    throw e;
   }
-  SAFE_HEAP_STORE(buf | 0, stat.dev | 0, 4);
-  SAFE_HEAP_STORE(buf + 4 | 0, 0 | 0, 4);
-  SAFE_HEAP_STORE(buf + 8 | 0, stat.ino | 0, 4);
-  SAFE_HEAP_STORE(buf + 12 | 0, stat.mode | 0, 4);
-  SAFE_HEAP_STORE(buf + 16 | 0, stat.nlink | 0, 4);
-  SAFE_HEAP_STORE(buf + 20 | 0, stat.uid | 0, 4);
-  SAFE_HEAP_STORE(buf + 24 | 0, stat.gid | 0, 4);
-  SAFE_HEAP_STORE(buf + 28 | 0, stat.rdev | 0, 4);
-  SAFE_HEAP_STORE(buf + 32 | 0, 0 | 0, 4);
-  SAFE_HEAP_STORE(buf + 36 | 0, stat.size | 0, 4);
-  SAFE_HEAP_STORE(buf + 40 | 0, 4096 | 0, 4);
-  SAFE_HEAP_STORE(buf + 44 | 0, stat.blocks | 0, 4);
-  SAFE_HEAP_STORE(buf + 48 | 0, stat.atime.getTime() / 1e3 | 0 | 0, 4);
-  SAFE_HEAP_STORE(buf + 52 | 0, 0 | 0, 4);
-  SAFE_HEAP_STORE(buf + 56 | 0, stat.mtime.getTime() / 1e3 | 0 | 0, 4);
-  SAFE_HEAP_STORE(buf + 60 | 0, 0 | 0, 4);
-  SAFE_HEAP_STORE(buf + 64 | 0, stat.ctime.getTime() / 1e3 | 0 | 0, 4);
-  SAFE_HEAP_STORE(buf + 68 | 0, 0 | 0, 4);
-  SAFE_HEAP_STORE(buf + 72 | 0, stat.ino | 0, 4);
+  HEAP32[buf >> 2] = stat.dev;
+  HEAP32[buf + 4 >> 2] = 0;
+  HEAP32[buf + 8 >> 2] = stat.ino;
+  HEAP32[buf + 12 >> 2] = stat.mode;
+  HEAP32[buf + 16 >> 2] = stat.nlink;
+  HEAP32[buf + 20 >> 2] = stat.uid;
+  HEAP32[buf + 24 >> 2] = stat.gid;
+  HEAP32[buf + 28 >> 2] = stat.rdev;
+  HEAP32[buf + 32 >> 2] = 0;
+  HEAP32[buf + 36 >> 2] = stat.size;
+  HEAP32[buf + 40 >> 2] = 4096;
+  HEAP32[buf + 44 >> 2] = stat.blocks;
+  HEAP32[buf + 48 >> 2] = stat.atime.getTime() / 1e3 | 0;
+  HEAP32[buf + 52 >> 2] = 0;
+  HEAP32[buf + 56 >> 2] = stat.mtime.getTime() / 1e3 | 0;
+  HEAP32[buf + 60 >> 2] = 0;
+  HEAP32[buf + 64 >> 2] = stat.ctime.getTime() / 1e3 | 0;
+  HEAP32[buf + 68 >> 2] = 0;
+  HEAP32[buf + 72 >> 2] = stat.ino;
   return 0;
  }),
  doMsync: (function(addr, stream, len, flags) {
@@ -7177,8 +7066,8 @@ var SYSCALLS = {
  doReadv: (function(stream, iov, iovcnt, offset) {
   var ret = 0;
   for (var i = 0; i < iovcnt; i++) {
-   var ptr = SAFE_HEAP_LOAD(iov + i * 8 | 0, 4, 0) | 0;
-   var len = SAFE_HEAP_LOAD(iov + (i * 8 + 4) | 0, 4, 0) | 0;
+   var ptr = HEAP32[iov + i * 8 >> 2];
+   var len = HEAP32[iov + (i * 8 + 4) >> 2];
    var curr = FS.read(stream, HEAP8, ptr, len, offset);
    if (curr < 0) return -1;
    ret += curr;
@@ -7189,8 +7078,8 @@ var SYSCALLS = {
  doWritev: (function(stream, iov, iovcnt, offset) {
   var ret = 0;
   for (var i = 0; i < iovcnt; i++) {
-   var ptr = SAFE_HEAP_LOAD(iov + i * 8 | 0, 4, 0) | 0;
-   var len = SAFE_HEAP_LOAD(iov + (i * 8 + 4) | 0, 4, 0) | 0;
+   var ptr = HEAP32[iov + i * 8 >> 2];
+   var len = HEAP32[iov + (i * 8 + 4) >> 2];
    var curr = FS.write(stream, HEAP8, ptr, len, offset);
    if (curr < 0) return -1;
    ret += curr;
@@ -7200,7 +7089,7 @@ var SYSCALLS = {
  varargs: 0,
  get: (function(varargs) {
   SYSCALLS.varargs += 4;
-  var ret = SAFE_HEAP_LOAD(SYSCALLS.varargs - 4 | 0, 4, 0) | 0;
+  var ret = HEAP32[SYSCALLS.varargs - 4 >> 2];
   return ret;
  }),
  getStr: (function() {
@@ -7253,7 +7142,7 @@ function ___syscall54(which, varargs) {
    {
     if (!stream.tty) return -ERRNO_CODES.ENOTTY;
     var argp = SYSCALLS.get();
-    SAFE_HEAP_STORE(argp | 0, 0 | 0, 4);
+    HEAP32[argp >> 2] = 0;
     return 0;
    }
   case 21520:
@@ -7294,7 +7183,7 @@ function _emscripten_glGetTexParameterfv(target, pname, params) {
   GL.recordError(1281);
   return;
  }
- SAFE_HEAP_STORE_D(params | 0, Math_fround(GLctx.getTexParameter(target, pname)), 4);
+ HEAPF32[params >> 2] = GLctx.getTexParameter(target, pname);
 }
 function _emscripten_glUniform4i(location, v0, v1, v2, v3) {
  GLctx.uniform4i(GL.uniforms[location], v0, v1, v2, v3);
@@ -7342,7 +7231,7 @@ function _emscripten_glCopyTexImage2D(x0, x1, x2, x3, x4, x5, x6, x7) {
  GLctx["copyTexImage2D"](x0, x1, x2, x3, x4, x5, x6, x7);
 }
 function _emscripten_glTexParameterfv(target, pname, params) {
- var param = Math_fround(SAFE_HEAP_LOAD_D(params | 0, 4, 0));
+ var param = HEAPF32[params >> 2];
  GLctx.texParameterf(target, pname, param);
 }
 function _emscripten_glLinkProgram(program) {
@@ -7411,7 +7300,7 @@ function _emscripten_glGetVertexAttribPointerv(index, pname, pointer) {
   GL.recordError(1281);
   return;
  }
- SAFE_HEAP_STORE(pointer | 0, GLctx.getVertexAttribOffset(index, pname) | 0, 4);
+ HEAP32[pointer >> 2] = GLctx.getVertexAttribOffset(index, pname);
 }
 function _emscripten_glVertexAttrib3f(x0, x1, x2, x3) {
  GLctx["vertexAttrib3f"](x0, x1, x2, x3);
@@ -7453,17 +7342,17 @@ function emscriptenWebGLGetVertexAttrib(index, pname, params, type) {
  }
  var data = GLctx.getVertexAttrib(index, pname);
  if (pname == 34975) {
-  SAFE_HEAP_STORE(params | 0, data["name"] | 0, 4);
+  HEAP32[params >> 2] = data["name"];
  } else if (typeof data == "number" || typeof data == "boolean") {
   switch (type) {
   case "Integer":
-   SAFE_HEAP_STORE(params | 0, data | 0, 4);
+   HEAP32[params >> 2] = data;
    break;
   case "Float":
-   SAFE_HEAP_STORE_D(params | 0, Math_fround(data), 4);
+   HEAPF32[params >> 2] = data;
    break;
   case "FloatToInteger":
-   SAFE_HEAP_STORE(params | 0, Math.fround(data) | 0, 4);
+   HEAP32[params >> 2] = Math.fround(data);
    break;
   default:
    throw "internal emscriptenWebGLGetVertexAttrib() error, bad type: " + type;
@@ -7472,13 +7361,13 @@ function emscriptenWebGLGetVertexAttrib(index, pname, params, type) {
   for (var i = 0; i < data.length; i++) {
    switch (type) {
    case "Integer":
-    SAFE_HEAP_STORE(params + i * 4 | 0, data[i] | 0, 4);
+    HEAP32[params + i * 4 >> 2] = data[i];
     break;
    case "Float":
-    SAFE_HEAP_STORE_D(params + i * 4 | 0, Math_fround(data[i]), 4);
+    HEAPF32[params + i * 4 >> 2] = data[i];
     break;
    case "FloatToInteger":
-    SAFE_HEAP_STORE(params + i * 4 | 0, Math.fround(data[i]) | 0, 4);
+    HEAP32[params + i * 4 >> 2] = Math.fround(data[i]);
     break;
    default:
     throw "internal emscriptenWebGLGetVertexAttrib() error, bad type: " + type;
@@ -7508,7 +7397,7 @@ function _emscripten_glVertexPointer() {
 }
 function _emscripten_glDeleteBuffers(n, buffers) {
  for (var i = 0; i < n; i++) {
-  var id = SAFE_HEAP_LOAD(buffers + i * 4 | 0, 4, 0) | 0;
+  var id = HEAP32[buffers + i * 4 >> 2];
   var buffer = GL.buffers[id];
   if (!buffer) continue;
   GLctx.deleteBuffer(buffer);
@@ -7519,7 +7408,7 @@ function _emscripten_glDeleteBuffers(n, buffers) {
  }
 }
 function _emscripten_glTexParameteriv(target, pname, params) {
- var param = SAFE_HEAP_LOAD(params | 0, 4, 0) | 0;
+ var param = HEAP32[params >> 2];
  GLctx.texParameteri(target, pname, param);
 }
 function _glDrawElements(mode, count, type, indices) {
@@ -7534,10 +7423,10 @@ function _emscripten_glUniformMatrix2fv(location, count, transpose, value) {
  if (4 * count <= GL.MINI_TEMP_BUFFER_SIZE) {
   view = GL.miniTempBufferViews[4 * count - 1];
   for (var i = 0; i < 4 * count; i += 4) {
-   view[i] = Math_fround(SAFE_HEAP_LOAD_D(value + 4 * i | 0, 4, 0));
-   view[i + 1] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 4) | 0, 4, 0));
-   view[i + 2] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 8) | 0, 4, 0));
-   view[i + 3] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 12) | 0, 4, 0));
+   view[i] = HEAPF32[value + 4 * i >> 2];
+   view[i + 1] = HEAPF32[value + (4 * i + 4) >> 2];
+   view[i + 2] = HEAPF32[value + (4 * i + 8) >> 2];
+   view[i + 3] = HEAPF32[value + (4 * i + 12) >> 2];
   }
  } else {
   view = HEAPF32.subarray(value >> 2, value + count * 16 >> 2);
@@ -7563,13 +7452,13 @@ function _glGenVertexArrays(n, arrays) {
   var vao = GLctx["createVertexArray"]();
   if (!vao) {
    GL.recordError(1282);
-   while (i < n) SAFE_HEAP_STORE(arrays + i++ * 4 | 0, 0 | 0, 4);
+   while (i < n) HEAP32[arrays + i++ * 4 >> 2] = 0;
    return;
   }
   var id = GL.getNewId(GL.vaos);
   vao.name = id;
   GL.vaos[id] = vao;
-  SAFE_HEAP_STORE(arrays + i * 4 | 0, id | 0, 4);
+  HEAP32[arrays + i * 4 >> 2] = id;
  }
 }
 function _llvm_stacksave() {
@@ -7592,22 +7481,22 @@ function _emscripten_glUniformMatrix4fv(location, count, transpose, value) {
  if (16 * count <= GL.MINI_TEMP_BUFFER_SIZE) {
   view = GL.miniTempBufferViews[16 * count - 1];
   for (var i = 0; i < 16 * count; i += 16) {
-   view[i] = Math_fround(SAFE_HEAP_LOAD_D(value + 4 * i | 0, 4, 0));
-   view[i + 1] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 4) | 0, 4, 0));
-   view[i + 2] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 8) | 0, 4, 0));
-   view[i + 3] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 12) | 0, 4, 0));
-   view[i + 4] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 16) | 0, 4, 0));
-   view[i + 5] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 20) | 0, 4, 0));
-   view[i + 6] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 24) | 0, 4, 0));
-   view[i + 7] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 28) | 0, 4, 0));
-   view[i + 8] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 32) | 0, 4, 0));
-   view[i + 9] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 36) | 0, 4, 0));
-   view[i + 10] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 40) | 0, 4, 0));
-   view[i + 11] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 44) | 0, 4, 0));
-   view[i + 12] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 48) | 0, 4, 0));
-   view[i + 13] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 52) | 0, 4, 0));
-   view[i + 14] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 56) | 0, 4, 0));
-   view[i + 15] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 60) | 0, 4, 0));
+   view[i] = HEAPF32[value + 4 * i >> 2];
+   view[i + 1] = HEAPF32[value + (4 * i + 4) >> 2];
+   view[i + 2] = HEAPF32[value + (4 * i + 8) >> 2];
+   view[i + 3] = HEAPF32[value + (4 * i + 12) >> 2];
+   view[i + 4] = HEAPF32[value + (4 * i + 16) >> 2];
+   view[i + 5] = HEAPF32[value + (4 * i + 20) >> 2];
+   view[i + 6] = HEAPF32[value + (4 * i + 24) >> 2];
+   view[i + 7] = HEAPF32[value + (4 * i + 28) >> 2];
+   view[i + 8] = HEAPF32[value + (4 * i + 32) >> 2];
+   view[i + 9] = HEAPF32[value + (4 * i + 36) >> 2];
+   view[i + 10] = HEAPF32[value + (4 * i + 40) >> 2];
+   view[i + 11] = HEAPF32[value + (4 * i + 44) >> 2];
+   view[i + 12] = HEAPF32[value + (4 * i + 48) >> 2];
+   view[i + 13] = HEAPF32[value + (4 * i + 52) >> 2];
+   view[i + 14] = HEAPF32[value + (4 * i + 56) >> 2];
+   view[i + 15] = HEAPF32[value + (4 * i + 60) >> 2];
   }
  } else {
   view = HEAPF32.subarray(value >> 2, value + count * 64 >> 2);
@@ -7694,90 +7583,90 @@ function _eglGetConfigAttrib(display, config, attribute, value) {
  EGL.setErrorCode(12288);
  switch (attribute) {
  case 12320:
-  SAFE_HEAP_STORE(value | 0, 32 | 0, 4);
+  HEAP32[value >> 2] = 32;
   return 1;
  case 12321:
-  SAFE_HEAP_STORE(value | 0, 8 | 0, 4);
+  HEAP32[value >> 2] = 8;
   return 1;
  case 12322:
-  SAFE_HEAP_STORE(value | 0, 8 | 0, 4);
+  HEAP32[value >> 2] = 8;
   return 1;
  case 12323:
-  SAFE_HEAP_STORE(value | 0, 8 | 0, 4);
+  HEAP32[value >> 2] = 8;
   return 1;
  case 12324:
-  SAFE_HEAP_STORE(value | 0, 8 | 0, 4);
+  HEAP32[value >> 2] = 8;
   return 1;
  case 12325:
-  SAFE_HEAP_STORE(value | 0, 24 | 0, 4);
+  HEAP32[value >> 2] = 24;
   return 1;
  case 12326:
-  SAFE_HEAP_STORE(value | 0, 8 | 0, 4);
+  HEAP32[value >> 2] = 8;
   return 1;
  case 12327:
-  SAFE_HEAP_STORE(value | 0, 12344 | 0, 4);
+  HEAP32[value >> 2] = 12344;
   return 1;
  case 12328:
-  SAFE_HEAP_STORE(value | 0, 62002 | 0, 4);
+  HEAP32[value >> 2] = 62002;
   return 1;
  case 12329:
-  SAFE_HEAP_STORE(value | 0, 0 | 0, 4);
+  HEAP32[value >> 2] = 0;
   return 1;
  case 12330:
-  SAFE_HEAP_STORE(value | 0, 4096 | 0, 4);
+  HEAP32[value >> 2] = 4096;
   return 1;
  case 12331:
-  SAFE_HEAP_STORE(value | 0, 16777216 | 0, 4);
+  HEAP32[value >> 2] = 16777216;
   return 1;
  case 12332:
-  SAFE_HEAP_STORE(value | 0, 4096 | 0, 4);
+  HEAP32[value >> 2] = 4096;
   return 1;
  case 12333:
-  SAFE_HEAP_STORE(value | 0, 0 | 0, 4);
+  HEAP32[value >> 2] = 0;
   return 1;
  case 12334:
-  SAFE_HEAP_STORE(value | 0, 0 | 0, 4);
+  HEAP32[value >> 2] = 0;
   return 1;
  case 12335:
-  SAFE_HEAP_STORE(value | 0, 12344 | 0, 4);
+  HEAP32[value >> 2] = 12344;
   return 1;
  case 12337:
-  SAFE_HEAP_STORE(value | 0, 4 | 0, 4);
+  HEAP32[value >> 2] = 4;
   return 1;
  case 12338:
-  SAFE_HEAP_STORE(value | 0, 1 | 0, 4);
+  HEAP32[value >> 2] = 1;
   return 1;
  case 12339:
-  SAFE_HEAP_STORE(value | 0, 4 | 0, 4);
+  HEAP32[value >> 2] = 4;
   return 1;
  case 12340:
-  SAFE_HEAP_STORE(value | 0, 12344 | 0, 4);
+  HEAP32[value >> 2] = 12344;
   return 1;
  case 12341:
  case 12342:
  case 12343:
-  SAFE_HEAP_STORE(value | 0, -1 | 0, 4);
+  HEAP32[value >> 2] = -1;
   return 1;
  case 12345:
  case 12346:
-  SAFE_HEAP_STORE(value | 0, 0 | 0, 4);
+  HEAP32[value >> 2] = 0;
   return 1;
  case 12347:
  case 12348:
-  SAFE_HEAP_STORE(value | 0, 1 | 0, 4);
+  HEAP32[value >> 2] = 1;
   return 1;
  case 12349:
  case 12350:
-  SAFE_HEAP_STORE(value | 0, 0 | 0, 4);
+  HEAP32[value >> 2] = 0;
   return 1;
  case 12351:
-  SAFE_HEAP_STORE(value | 0, 12430 | 0, 4);
+  HEAP32[value >> 2] = 12430;
   return 1;
  case 12352:
-  SAFE_HEAP_STORE(value | 0, 4 | 0, 4);
+  HEAP32[value >> 2] = 4;
   return 1;
  case 12354:
-  SAFE_HEAP_STORE(value | 0, 0 | 0, 4);
+  HEAP32[value >> 2] = 0;
   return 1;
  default:
   EGL.setErrorCode(12292);
@@ -7800,16 +7689,16 @@ function ___cxa_find_matching_catch() {
  var typeArray = Array.prototype.slice.call(arguments);
  var pointer = Module["___cxa_is_pointer_type"](throwntype);
  if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
- SAFE_HEAP_STORE(___cxa_find_matching_catch.buffer | 0, thrown | 0, 4);
+ HEAP32[___cxa_find_matching_catch.buffer >> 2] = thrown;
  thrown = ___cxa_find_matching_catch.buffer;
  for (var i = 0; i < typeArray.length; i++) {
   if (typeArray[i] && Module["___cxa_can_catch"](typeArray[i], throwntype, thrown)) {
-   thrown = SAFE_HEAP_LOAD(thrown | 0, 4, 0) | 0;
+   thrown = HEAP32[thrown >> 2];
    info.adjusted = thrown;
    return (Runtime.setTempRet0(typeArray[i]), thrown) | 0;
   }
  }
- thrown = SAFE_HEAP_LOAD(thrown | 0, 4, 0) | 0;
+ thrown = HEAP32[thrown >> 2];
  return (Runtime.setTempRet0(throwntype), thrown) | 0;
 }
 function ___cxa_throw(ptr, type, destructor) {
@@ -7926,12 +7815,12 @@ function __registerRestoreOldStyle(canvas) {
 }
 function _emscripten_request_fullscreen_strategy(target, deferUntilInEventHandler, fullscreenStrategy) {
  var strategy = {};
- strategy.scaleMode = SAFE_HEAP_LOAD(fullscreenStrategy | 0, 4, 0) | 0;
- strategy.canvasResolutionScaleMode = SAFE_HEAP_LOAD(fullscreenStrategy + 4 | 0, 4, 0) | 0;
- strategy.filteringMode = SAFE_HEAP_LOAD(fullscreenStrategy + 8 | 0, 4, 0) | 0;
+ strategy.scaleMode = HEAP32[fullscreenStrategy >> 2];
+ strategy.canvasResolutionScaleMode = HEAP32[fullscreenStrategy + 4 >> 2];
+ strategy.filteringMode = HEAP32[fullscreenStrategy + 8 >> 2];
  strategy.deferUntilInEventHandler = deferUntilInEventHandler;
- strategy.canvasResizedCallback = SAFE_HEAP_LOAD(fullscreenStrategy + 12 | 0, 4, 0) | 0;
- strategy.canvasResizedCallbackUserData = SAFE_HEAP_LOAD(fullscreenStrategy + 16 | 0, 4, 0) | 0;
+ strategy.canvasResizedCallback = HEAP32[fullscreenStrategy + 12 >> 2];
+ strategy.canvasResizedCallbackUserData = HEAP32[fullscreenStrategy + 16 >> 2];
  __currentFullscreenStrategy = strategy;
  return _emscripten_do_request_fullscreen(target, strategy);
 }
@@ -7955,9 +7844,9 @@ function _emscripten_glGetProgramiv(program, pname, p) {
  if (pname == 35716) {
   var log = GLctx.getProgramInfoLog(GL.programs[program]);
   if (log === null) log = "(unknown error)";
-  SAFE_HEAP_STORE(p | 0, log.length + 1 | 0, 4);
+  HEAP32[p >> 2] = log.length + 1;
  } else if (pname == 35719) {
-  SAFE_HEAP_STORE(p | 0, ptable.maxUniformLength | 0, 4);
+  HEAP32[p >> 2] = ptable.maxUniformLength;
  } else if (pname == 35722) {
   if (ptable.maxAttributeLength == -1) {
    var program = GL.programs[program];
@@ -7968,7 +7857,7 @@ function _emscripten_glGetProgramiv(program, pname, p) {
     ptable.maxAttributeLength = Math.max(ptable.maxAttributeLength, activeAttrib.name.length + 1);
    }
   }
-  SAFE_HEAP_STORE(p | 0, ptable.maxAttributeLength | 0, 4);
+  HEAP32[p >> 2] = ptable.maxAttributeLength;
  } else if (pname == 35381) {
   if (ptable.maxUniformBlockNameLength == -1) {
    var program = GL.programs[program];
@@ -7979,9 +7868,9 @@ function _emscripten_glGetProgramiv(program, pname, p) {
     ptable.maxUniformBlockNameLength = Math.max(ptable.maxUniformBlockNameLength, activeBlockName.length + 1);
    }
   }
-  SAFE_HEAP_STORE(p | 0, ptable.maxUniformBlockNameLength | 0, 4);
+  HEAP32[p >> 2] = ptable.maxUniformBlockNameLength;
  } else {
-  SAFE_HEAP_STORE(p | 0, GLctx.getProgramParameter(GL.programs[program], pname) | 0, 4);
+  HEAP32[p >> 2] = GLctx.getProgramParameter(GL.programs[program], pname);
  }
 }
 function _emscripten_glFinish() {
@@ -8063,7 +7952,7 @@ function _emscripten_glGetRenderbufferParameteriv(target, pname, params) {
   GL.recordError(1281);
   return;
  }
- SAFE_HEAP_STORE(params | 0, GLctx.getRenderbufferParameter(target, pname) | 0, 4);
+ HEAP32[params >> 2] = GLctx.getRenderbufferParameter(target, pname);
 }
 function _emscripten_request_pointerlock(target, deferUntilInEventHandler) {
  if (!target) target = "#canvas";
@@ -8117,8 +8006,8 @@ function _emscripten_glColorPointer() {
 }
 function _gettimeofday(ptr) {
  var now = Date.now();
- SAFE_HEAP_STORE(ptr | 0, now / 1e3 | 0 | 0, 4);
- SAFE_HEAP_STORE(ptr + 4 | 0, now % 1e3 * 1e3 | 0 | 0, 4);
+ HEAP32[ptr >> 2] = now / 1e3 | 0;
+ HEAP32[ptr + 4 >> 2] = now % 1e3 * 1e3 | 0;
  return 0;
 }
 function _emscripten_glClearStencil(x0) {
@@ -8132,7 +8021,7 @@ function _emscripten_get_device_pixel_ratio() {
 }
 function _emscripten_glDeleteVertexArrays(n, vaos) {
  for (var i = 0; i < n; i++) {
-  var id = SAFE_HEAP_LOAD(vaos + i * 4 | 0, 4, 0) | 0;
+  var id = HEAP32[vaos + i * 4 >> 2];
   GLctx["deleteVertexArray"](GL.vaos[id]);
   GL.vaos[id] = null;
  }
@@ -8149,11 +8038,11 @@ function _emscripten_get_element_css_size(target, width, height) {
  if (!target) return -4;
  if (target.getBoundingClientRect) {
   var rect = target.getBoundingClientRect();
-  SAFE_HEAP_STORE_D(width | 0, +(rect.right - rect.left), 8);
-  SAFE_HEAP_STORE_D(height | 0, +(rect.bottom - rect.top), 8);
+  HEAPF64[width >> 3] = rect.right - rect.left;
+  HEAPF64[height >> 3] = rect.bottom - rect.top;
  } else {
-  SAFE_HEAP_STORE_D(width | 0, +target.clientWidth, 8);
-  SAFE_HEAP_STORE_D(height | 0, +target.clientHeight, 8);
+  HEAPF64[width >> 3] = target.clientWidth;
+  HEAPF64[height >> 3] = target.clientHeight;
  }
  return 0;
 }
@@ -8165,7 +8054,7 @@ function _emscripten_glGetTexParameteriv(target, pname, params) {
   GL.recordError(1281);
   return;
  }
- SAFE_HEAP_STORE(params | 0, GLctx.getTexParameter(target, pname) | 0, 4);
+ HEAP32[params >> 2] = GLctx.getTexParameter(target, pname);
 }
 function _emscripten_glGenerateMipmap(x0) {
  GLctx["generateMipmap"](x0);
@@ -8175,7 +8064,7 @@ function _emscripten_glCullFace(x0) {
 }
 function _glDeleteTextures(n, textures) {
  for (var i = 0; i < n; i++) {
-  var id = SAFE_HEAP_LOAD(textures + i * 4 | 0, 4, 0) | 0;
+  var id = HEAP32[textures + i * 4 >> 2];
   var texture = GL.textures[id];
   if (!texture) continue;
   GLctx.deleteTexture(texture);
@@ -8225,8 +8114,8 @@ function _emscripten_glUniform2fv(location, count, value) {
  if (2 * count <= GL.MINI_TEMP_BUFFER_SIZE) {
   view = GL.miniTempBufferViews[2 * count - 1];
   for (var i = 0; i < 2 * count; i += 2) {
-   view[i] = Math_fround(SAFE_HEAP_LOAD_D(value + 4 * i | 0, 4, 0));
-   view[i + 1] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 4) | 0, 4, 0));
+   view[i] = HEAPF32[value + 4 * i >> 2];
+   view[i + 1] = HEAPF32[value + (4 * i + 4) >> 2];
   }
  } else {
   view = HEAPF32.subarray(value >> 2, value + count * 8 >> 2);
@@ -8238,9 +8127,9 @@ function _glGetShaderInfoLog(shader, maxLength, length, infoLog) {
  if (log === null) log = "(unknown error)";
  if (maxLength > 0 && infoLog) {
   var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
-  if (length) SAFE_HEAP_STORE(length | 0, numBytesWrittenExclNull | 0, 4);
+  if (length) HEAP32[length >> 2] = numBytesWrittenExclNull;
  } else {
-  if (length) SAFE_HEAP_STORE(length | 0, 0 | 0, 4);
+  if (length) HEAP32[length >> 2] = 0;
  }
 }
 function __isLeapYear(year) {
@@ -8276,18 +8165,18 @@ function __addDays(date, days) {
  return newDate;
 }
 function _strftime(s, maxsize, format, tm) {
- var tm_zone = SAFE_HEAP_LOAD(tm + 40 | 0, 4, 0) | 0;
+ var tm_zone = HEAP32[tm + 40 >> 2];
  var date = {
-  tm_sec: SAFE_HEAP_LOAD(tm | 0, 4, 0) | 0,
-  tm_min: SAFE_HEAP_LOAD(tm + 4 | 0, 4, 0) | 0,
-  tm_hour: SAFE_HEAP_LOAD(tm + 8 | 0, 4, 0) | 0,
-  tm_mday: SAFE_HEAP_LOAD(tm + 12 | 0, 4, 0) | 0,
-  tm_mon: SAFE_HEAP_LOAD(tm + 16 | 0, 4, 0) | 0,
-  tm_year: SAFE_HEAP_LOAD(tm + 20 | 0, 4, 0) | 0,
-  tm_wday: SAFE_HEAP_LOAD(tm + 24 | 0, 4, 0) | 0,
-  tm_yday: SAFE_HEAP_LOAD(tm + 28 | 0, 4, 0) | 0,
-  tm_isdst: SAFE_HEAP_LOAD(tm + 32 | 0, 4, 0) | 0,
-  tm_gmtoff: SAFE_HEAP_LOAD(tm + 36 | 0, 4, 0) | 0,
+  tm_sec: HEAP32[tm >> 2],
+  tm_min: HEAP32[tm + 4 >> 2],
+  tm_hour: HEAP32[tm + 8 >> 2],
+  tm_mday: HEAP32[tm + 12 >> 2],
+  tm_mon: HEAP32[tm + 16 >> 2],
+  tm_year: HEAP32[tm + 20 >> 2],
+  tm_wday: HEAP32[tm + 24 >> 2],
+  tm_yday: HEAP32[tm + 28 >> 2],
+  tm_isdst: HEAP32[tm + 32 >> 2],
+  tm_gmtoff: HEAP32[tm + 36 >> 2],
   tm_zone: tm_zone ? Pointer_stringify(tm_zone) : ""
  };
  var pattern = Pointer_stringify(format);
@@ -8523,7 +8412,7 @@ function _emscripten_glFramebufferRenderbuffer(target, attachment, renderbuffert
 }
 function _emscripten_glDeleteFramebuffers(n, framebuffers) {
  for (var i = 0; i < n; ++i) {
-  var id = SAFE_HEAP_LOAD(framebuffers + i * 4 | 0, 4, 0) | 0;
+  var id = HEAP32[framebuffers + i * 4 >> 2];
   var framebuffer = GL.framebuffers[id];
   if (!framebuffer) continue;
   GLctx.deleteFramebuffer(framebuffer);
@@ -8748,7 +8637,7 @@ function _glCreateProgram() {
 }
 function _emscripten_glDeleteRenderbuffers(n, renderbuffers) {
  for (var i = 0; i < n; i++) {
-  var id = SAFE_HEAP_LOAD(renderbuffers + i * 4 | 0, 4, 0) | 0;
+  var id = HEAP32[renderbuffers + i * 4 >> 2];
   var renderbuffer = GL.renderbuffers[id];
   if (!renderbuffer) continue;
   GLctx.deleteRenderbuffer(renderbuffer);
@@ -8761,7 +8650,7 @@ function _emscripten_glGetBufferParameteriv(target, value, data) {
   GL.recordError(1281);
   return;
  }
- SAFE_HEAP_STORE(data | 0, GLctx.getBufferParameter(target, value) | 0, 4);
+ HEAP32[data >> 2] = GLctx.getBufferParameter(target, value);
 }
 function emscriptenWebGLGetUniform(program, location, params, type) {
  if (!params) {
@@ -8772,10 +8661,10 @@ function emscriptenWebGLGetUniform(program, location, params, type) {
  if (typeof data == "number" || typeof data == "boolean") {
   switch (type) {
   case "Integer":
-   SAFE_HEAP_STORE(params | 0, data | 0, 4);
+   HEAP32[params >> 2] = data;
    break;
   case "Float":
-   SAFE_HEAP_STORE_D(params | 0, Math_fround(data), 4);
+   HEAPF32[params >> 2] = data;
    break;
   default:
    throw "internal emscriptenWebGLGetUniform() error, bad type: " + type;
@@ -8784,10 +8673,10 @@ function emscriptenWebGLGetUniform(program, location, params, type) {
   for (var i = 0; i < data.length; i++) {
    switch (type) {
    case "Integer":
-    SAFE_HEAP_STORE(params + i * 4 | 0, data[i] | 0, 4);
+    HEAP32[params + i * 4 >> 2] = data[i];
     break;
    case "Float":
-    SAFE_HEAP_STORE_D(params + i * 4 | 0, Math_fround(data[i]), 4);
+    HEAPF32[params + i * 4 >> 2] = data[i];
     break;
    default:
     throw "internal emscriptenWebGLGetUniform() error, bad type: " + type;
@@ -8829,7 +8718,7 @@ function ___syscall140(which, varargs) {
   var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
   var offset = offset_low;
   FS.llseek(stream, offset, whence);
-  SAFE_HEAP_STORE(result | 0, stream.position | 0, 4);
+  HEAP32[result >> 2] = stream.position;
   if (stream.getdents && offset === 0 && whence === 0) stream.getdents = null;
   return 0;
  } catch (e) {
@@ -8842,9 +8731,9 @@ function _emscripten_glVertexAttrib1f(x0, x1) {
 }
 function _emscripten_glGetShaderPrecisionFormat(shaderType, precisionType, range, precision) {
  var result = GLctx.getShaderPrecisionFormat(shaderType, precisionType);
- SAFE_HEAP_STORE(range | 0, result.rangeMin | 0, 4);
- SAFE_HEAP_STORE(range + 4 | 0, result.rangeMax | 0, 4);
- SAFE_HEAP_STORE(precision | 0, result.precision | 0, 4);
+ HEAP32[range >> 2] = result.rangeMin;
+ HEAP32[range + 4 >> 2] = result.rangeMax;
+ HEAP32[precision >> 2] = result.precision;
 }
 function _emscripten_glUniform1fv(location, count, value) {
  if (GL.currentContext.supportsWebGL2EntryPoints) {
@@ -8855,7 +8744,7 @@ function _emscripten_glUniform1fv(location, count, value) {
  if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
   view = GL.miniTempBufferViews[count - 1];
   for (var i = 0; i < count; ++i) {
-   view[i] = Math_fround(SAFE_HEAP_LOAD_D(value + 4 * i | 0, 4, 0));
+   view[i] = HEAPF32[value + 4 * i >> 2];
   }
  } else {
   view = HEAPF32.subarray(value >> 2, value + count * 4 >> 2);
@@ -8913,12 +8802,12 @@ function _emscripten_glGetActiveAttrib(program, index, bufSize, length, size, ty
  if (!info) return;
  if (bufSize > 0 && name) {
   var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
-  if (length) SAFE_HEAP_STORE(length | 0, numBytesWrittenExclNull | 0, 4);
+  if (length) HEAP32[length >> 2] = numBytesWrittenExclNull;
  } else {
-  if (length) SAFE_HEAP_STORE(length | 0, 0 | 0, 4);
+  if (length) HEAP32[length >> 2] = 0;
  }
- if (size) SAFE_HEAP_STORE(size | 0, info.size | 0, 4);
- if (type) SAFE_HEAP_STORE(type | 0, info.type | 0, 4);
+ if (size) HEAP32[size >> 2] = info.size;
+ if (type) HEAP32[type >> 2] = info.type;
 }
 function _emscripten_glIsFramebuffer(framebuffer) {
  var fb = GL.framebuffers[framebuffer];
@@ -9077,13 +8966,13 @@ function emscriptenWebGLGet(name_, p, type) {
     for (var i = 0; i < result.length; ++i) {
      switch (type) {
      case "Integer":
-      SAFE_HEAP_STORE(p + i * 4 | 0, result[i] | 0, 4);
+      HEAP32[p + i * 4 >> 2] = result[i];
       break;
      case "Float":
-      SAFE_HEAP_STORE_D(p + i * 4 | 0, Math_fround(result[i]), 4);
+      HEAPF32[p + i * 4 >> 2] = result[i];
       break;
      case "Boolean":
-      SAFE_HEAP_STORE(p + i | 0, (result[i] ? 1 : 0) | 0, 1);
+      HEAP8[p + i >> 0] = result[i] ? 1 : 0;
       break;
      default:
       throw "internal glGet error, bad type: " + type;
@@ -9104,16 +8993,16 @@ function emscriptenWebGLGet(name_, p, type) {
  }
  switch (type) {
  case "Integer64":
-  tempI64 = [ ret >>> 0, (tempDouble = ret, +Math_abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math_min(+Math_floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math_ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], SAFE_HEAP_STORE(p | 0, tempI64[0] | 0, 4), SAFE_HEAP_STORE(p + 4 | 0, tempI64[1] | 0, 4);
+  tempI64 = [ ret >>> 0, (tempDouble = ret, +Math_abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math_min(+Math_floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math_ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0) ], HEAP32[p >> 2] = tempI64[0], HEAP32[p + 4 >> 2] = tempI64[1];
   break;
  case "Integer":
-  SAFE_HEAP_STORE(p | 0, ret | 0, 4);
+  HEAP32[p >> 2] = ret;
   break;
  case "Float":
-  SAFE_HEAP_STORE_D(p | 0, Math_fround(ret), 4);
+  HEAPF32[p >> 2] = ret;
   break;
  case "Boolean":
-  SAFE_HEAP_STORE(p | 0, (ret ? 1 : 0) | 0, 1);
+  HEAP8[p >> 0] = ret ? 1 : 0;
   break;
  default:
   throw "internal glGet error, bad type: " + type;
@@ -9124,7 +9013,7 @@ function _emscripten_glGetIntegerv(name_, p) {
 }
 function _emscripten_glGetFramebufferAttachmentParameteriv(target, attachment, pname, params) {
  var result = GLctx.getFramebufferAttachmentParameter(target, attachment, pname);
- SAFE_HEAP_STORE(params | 0, result | 0, 4);
+ HEAP32[params >> 2] = result;
 }
 function _llvm_stackrestore(p) {
  var self = _llvm_stacksave;
@@ -9149,9 +9038,9 @@ function _emscripten_glGetShaderInfoLog(shader, maxLength, length, infoLog) {
  if (log === null) log = "(unknown error)";
  if (maxLength > 0 && infoLog) {
   var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
-  if (length) SAFE_HEAP_STORE(length | 0, numBytesWrittenExclNull | 0, 4);
+  if (length) HEAP32[length >> 2] = numBytesWrittenExclNull;
  } else {
-  if (length) SAFE_HEAP_STORE(length | 0, 0 | 0, 4);
+  if (length) HEAP32[length >> 2] = 0;
  }
 }
 function _emscripten_set_mouseup_callback(target, userData, useCapture, callbackfunc) {
@@ -9500,9 +9389,9 @@ function _eglCreateContext(display, config, hmm, contextAttribs) {
  }
  var glesContextVersion = 1;
  for (;;) {
-  var param = SAFE_HEAP_LOAD(contextAttribs | 0, 4, 0) | 0;
+  var param = HEAP32[contextAttribs >> 2];
   if (param == 12440) {
-   glesContextVersion = SAFE_HEAP_LOAD(contextAttribs + 4 | 0, 4, 0) | 0;
+   glesContextVersion = HEAP32[contextAttribs + 4 >> 2];
   } else if (param == 12344) {
    break;
   } else {
@@ -9568,13 +9457,13 @@ function _glGenBuffers(n, buffers) {
   var buffer = GLctx.createBuffer();
   if (!buffer) {
    GL.recordError(1282);
-   while (i < n) SAFE_HEAP_STORE(buffers + i++ * 4 | 0, 0 | 0, 4);
+   while (i < n) HEAP32[buffers + i++ * 4 >> 2] = 0;
    return;
   }
   var id = GL.getNewId(GL.buffers);
   buffer.name = id;
   GL.buffers[id] = buffer;
-  SAFE_HEAP_STORE(buffers + i * 4 | 0, id | 0, 4);
+  HEAP32[buffers + i * 4 >> 2] = id;
  }
 }
 function _emscripten_glIsEnabled(x0) {
@@ -9585,13 +9474,13 @@ function _glGenTextures(n, textures) {
   var texture = GLctx.createTexture();
   if (!texture) {
    GL.recordError(1282);
-   while (i < n) SAFE_HEAP_STORE(textures + i++ * 4 | 0, 0 | 0, 4);
+   while (i < n) HEAP32[textures + i++ * 4 >> 2] = 0;
    return;
   }
   var id = GL.getNewId(GL.textures);
   texture.name = id;
   GL.textures[id] = texture;
-  SAFE_HEAP_STORE(textures + i * 4 | 0, id | 0, 4);
+  HEAP32[textures + i * 4 >> 2] = id;
  }
 }
 var __sigalrm_handler = 0;
@@ -9629,8 +9518,8 @@ function _clock_gettime(clk_id, tp) {
   ___setErrNo(ERRNO_CODES.EINVAL);
   return -1;
  }
- SAFE_HEAP_STORE(tp | 0, now / 1e3 | 0 | 0, 4);
- SAFE_HEAP_STORE(tp + 4 | 0, now % 1e3 * 1e3 * 1e3 | 0 | 0, 4);
+ HEAP32[tp >> 2] = now / 1e3 | 0;
+ HEAP32[tp + 4 >> 2] = now % 1e3 * 1e3 * 1e3 | 0;
  return 0;
 }
 function _emscripten_glBindBuffer(target, buffer) {
@@ -9665,9 +9554,9 @@ function _glGetProgramiv(program, pname, p) {
  if (pname == 35716) {
   var log = GLctx.getProgramInfoLog(GL.programs[program]);
   if (log === null) log = "(unknown error)";
-  SAFE_HEAP_STORE(p | 0, log.length + 1 | 0, 4);
+  HEAP32[p >> 2] = log.length + 1;
  } else if (pname == 35719) {
-  SAFE_HEAP_STORE(p | 0, ptable.maxUniformLength | 0, 4);
+  HEAP32[p >> 2] = ptable.maxUniformLength;
  } else if (pname == 35722) {
   if (ptable.maxAttributeLength == -1) {
    var program = GL.programs[program];
@@ -9678,7 +9567,7 @@ function _glGetProgramiv(program, pname, p) {
     ptable.maxAttributeLength = Math.max(ptable.maxAttributeLength, activeAttrib.name.length + 1);
    }
   }
-  SAFE_HEAP_STORE(p | 0, ptable.maxAttributeLength | 0, 4);
+  HEAP32[p >> 2] = ptable.maxAttributeLength;
  } else if (pname == 35381) {
   if (ptable.maxUniformBlockNameLength == -1) {
    var program = GL.programs[program];
@@ -9689,9 +9578,9 @@ function _glGetProgramiv(program, pname, p) {
     ptable.maxUniformBlockNameLength = Math.max(ptable.maxUniformBlockNameLength, activeBlockName.length + 1);
    }
   }
-  SAFE_HEAP_STORE(p | 0, ptable.maxUniformBlockNameLength | 0, 4);
+  HEAP32[p >> 2] = ptable.maxUniformBlockNameLength;
  } else {
-  SAFE_HEAP_STORE(p | 0, GLctx.getProgramParameter(GL.programs[program], pname) | 0, 4);
+  HEAP32[p >> 2] = GLctx.getProgramParameter(GL.programs[program], pname);
  }
 }
 function ___gxx_personality_v0() {}
@@ -9749,10 +9638,10 @@ function _emscripten_glGetAttachedShaders(program, maxCount, count, shaders) {
  if (len > maxCount) {
   len = maxCount;
  }
- SAFE_HEAP_STORE(count | 0, len | 0, 4);
+ HEAP32[count >> 2] = len;
  for (var i = 0; i < len; ++i) {
   var id = GL.shaders.indexOf(result[i]);
-  SAFE_HEAP_STORE(shaders + i * 4 | 0, id | 0, 4);
+  HEAP32[shaders + i * 4 >> 2] = id;
  }
 }
 function _emscripten_glGenRenderbuffers(n, renderbuffers) {
@@ -9760,13 +9649,13 @@ function _emscripten_glGenRenderbuffers(n, renderbuffers) {
   var renderbuffer = GLctx.createRenderbuffer();
   if (!renderbuffer) {
    GL.recordError(1282);
-   while (i < n) SAFE_HEAP_STORE(renderbuffers + i++ * 4 | 0, 0 | 0, 4);
+   while (i < n) HEAP32[renderbuffers + i++ * 4 >> 2] = 0;
    return;
   }
   var id = GL.getNewId(GL.renderbuffers);
   renderbuffer.name = id;
   GL.renderbuffers[id] = renderbuffer;
-  SAFE_HEAP_STORE(renderbuffers + i * 4 | 0, id | 0, 4);
+  HEAP32[renderbuffers + i * 4 >> 2] = id;
  }
 }
 function _emscripten_glFrontFace(x0) {
@@ -9842,10 +9731,10 @@ function ___cxa_begin_catch(ptr) {
 function _eglInitialize(display, majorVersion, minorVersion) {
  if (display == 62e3) {
   if (majorVersion) {
-   SAFE_HEAP_STORE(majorVersion | 0, 1 | 0, 4);
+   HEAP32[majorVersion >> 2] = 1;
   }
   if (minorVersion) {
-   SAFE_HEAP_STORE(minorVersion | 0, 4 | 0, 4);
+   HEAP32[minorVersion >> 2] = 4;
   }
   EGL.defaultDisplayInitialized = true;
   EGL.setErrorCode(12288);
@@ -9866,13 +9755,13 @@ function _emscripten_glGetShaderiv(shader, pname, p) {
  if (pname == 35716) {
   var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
   if (log === null) log = "(unknown error)";
-  SAFE_HEAP_STORE(p | 0, log.length + 1 | 0, 4);
+  HEAP32[p >> 2] = log.length + 1;
  } else if (pname == 35720) {
   var source = GLctx.getShaderSource(GL.shaders[shader]);
   var sourceLength = source === null || source.length == 0 ? 0 : source.length + 1;
-  SAFE_HEAP_STORE(p | 0, sourceLength | 0, 4);
+  HEAP32[p >> 2] = sourceLength;
  } else {
-  SAFE_HEAP_STORE(p | 0, GLctx.getShaderParameter(GL.shaders[shader], pname) | 0, 4);
+  HEAP32[p >> 2] = GLctx.getShaderParameter(GL.shaders[shader], pname);
  }
 }
 function _emscripten_glUniformMatrix3fv(location, count, transpose, value) {
@@ -9884,15 +9773,15 @@ function _emscripten_glUniformMatrix3fv(location, count, transpose, value) {
  if (9 * count <= GL.MINI_TEMP_BUFFER_SIZE) {
   view = GL.miniTempBufferViews[9 * count - 1];
   for (var i = 0; i < 9 * count; i += 9) {
-   view[i] = Math_fround(SAFE_HEAP_LOAD_D(value + 4 * i | 0, 4, 0));
-   view[i + 1] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 4) | 0, 4, 0));
-   view[i + 2] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 8) | 0, 4, 0));
-   view[i + 3] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 12) | 0, 4, 0));
-   view[i + 4] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 16) | 0, 4, 0));
-   view[i + 5] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 20) | 0, 4, 0));
-   view[i + 6] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 24) | 0, 4, 0));
-   view[i + 7] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 28) | 0, 4, 0));
-   view[i + 8] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 32) | 0, 4, 0));
+   view[i] = HEAPF32[value + 4 * i >> 2];
+   view[i + 1] = HEAPF32[value + (4 * i + 4) >> 2];
+   view[i + 2] = HEAPF32[value + (4 * i + 8) >> 2];
+   view[i + 3] = HEAPF32[value + (4 * i + 12) >> 2];
+   view[i + 4] = HEAPF32[value + (4 * i + 16) >> 2];
+   view[i + 5] = HEAPF32[value + (4 * i + 20) >> 2];
+   view[i + 6] = HEAPF32[value + (4 * i + 24) >> 2];
+   view[i + 7] = HEAPF32[value + (4 * i + 28) >> 2];
+   view[i + 8] = HEAPF32[value + (4 * i + 32) >> 2];
   }
  } else {
   view = HEAPF32.subarray(value >> 2, value + count * 36 >> 2);
@@ -9908,10 +9797,10 @@ function _emscripten_glUniform4fv(location, count, value) {
  if (4 * count <= GL.MINI_TEMP_BUFFER_SIZE) {
   view = GL.miniTempBufferViews[4 * count - 1];
   for (var i = 0; i < 4 * count; i += 4) {
-   view[i] = Math_fround(SAFE_HEAP_LOAD_D(value + 4 * i | 0, 4, 0));
-   view[i + 1] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 4) | 0, 4, 0));
-   view[i + 2] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 8) | 0, 4, 0));
-   view[i + 3] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 12) | 0, 4, 0));
+   view[i] = HEAPF32[value + 4 * i >> 2];
+   view[i + 1] = HEAPF32[value + (4 * i + 4) >> 2];
+   view[i + 2] = HEAPF32[value + (4 * i + 8) >> 2];
+   view[i + 3] = HEAPF32[value + (4 * i + 12) >> 2];
   }
  } else {
   view = HEAPF32.subarray(value >> 2, value + count * 16 >> 2);
@@ -9942,13 +9831,13 @@ function _emscripten_glGenFramebuffers(n, ids) {
   var framebuffer = GLctx.createFramebuffer();
   if (!framebuffer) {
    GL.recordError(1282);
-   while (i < n) SAFE_HEAP_STORE(ids + i++ * 4 | 0, 0 | 0, 4);
+   while (i < n) HEAP32[ids + i++ * 4 >> 2] = 0;
    return;
   }
   var id = GL.getNewId(GL.framebuffers);
   framebuffer.name = id;
   GL.framebuffers[id] = framebuffer;
-  SAFE_HEAP_STORE(ids + i * 4 | 0, id | 0, 4);
+  HEAP32[ids + i * 4 >> 2] = id;
  }
 }
 function _glGetShaderiv(shader, pname, p) {
@@ -9959,13 +9848,13 @@ function _glGetShaderiv(shader, pname, p) {
  if (pname == 35716) {
   var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
   if (log === null) log = "(unknown error)";
-  SAFE_HEAP_STORE(p | 0, log.length + 1 | 0, 4);
+  HEAP32[p >> 2] = log.length + 1;
  } else if (pname == 35720) {
   var source = GLctx.getShaderSource(GL.shaders[shader]);
   var sourceLength = source === null || source.length == 0 ? 0 : source.length + 1;
-  SAFE_HEAP_STORE(p | 0, sourceLength | 0, 4);
+  HEAP32[p >> 2] = sourceLength;
  } else {
-  SAFE_HEAP_STORE(p | 0, GLctx.getShaderParameter(GL.shaders[shader], pname) | 0, 4);
+  HEAP32[p >> 2] = GLctx.getShaderParameter(GL.shaders[shader], pname);
  }
 }
 function _emscripten_glBlendEquationSeparate(x0, x1) {
@@ -9987,11 +9876,11 @@ function _usleep(useconds) {
  return 0;
 }
 function _nanosleep(rqtp, rmtp) {
- var seconds = SAFE_HEAP_LOAD(rqtp | 0, 4, 0) | 0;
- var nanoseconds = SAFE_HEAP_LOAD(rqtp + 4 | 0, 4, 0) | 0;
+ var seconds = HEAP32[rqtp >> 2];
+ var nanoseconds = HEAP32[rqtp + 4 >> 2];
  if (rmtp !== 0) {
-  SAFE_HEAP_STORE(rmtp | 0, 0 | 0, 4);
-  SAFE_HEAP_STORE(rmtp + 4 | 0, 0 | 0, 4);
+  HEAP32[rmtp >> 2] = 0;
+  HEAP32[rmtp + 4 >> 2] = 0;
  }
  return _usleep(seconds * 1e6 + nanoseconds / 1e3);
 }
@@ -10006,13 +9895,13 @@ function _emscripten_glGenTextures(n, textures) {
   var texture = GLctx.createTexture();
   if (!texture) {
    GL.recordError(1282);
-   while (i < n) SAFE_HEAP_STORE(textures + i++ * 4 | 0, 0 | 0, 4);
+   while (i < n) HEAP32[textures + i++ * 4 >> 2] = 0;
    return;
   }
   var id = GL.getNewId(GL.textures);
   texture.name = id;
   GL.textures[id] = texture;
-  SAFE_HEAP_STORE(textures + i * 4 | 0, id | 0, 4);
+  HEAP32[textures + i * 4 >> 2] = id;
  }
 }
 function _emscripten_glVertexAttrib2fv(index, v) {
@@ -10024,12 +9913,12 @@ function _emscripten_glGetActiveUniform(program, index, bufSize, length, size, t
  if (!info) return;
  if (bufSize > 0 && name) {
   var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
-  if (length) SAFE_HEAP_STORE(length | 0, numBytesWrittenExclNull | 0, 4);
+  if (length) HEAP32[length >> 2] = numBytesWrittenExclNull;
  } else {
-  if (length) SAFE_HEAP_STORE(length | 0, 0 | 0, 4);
+  if (length) HEAP32[length >> 2] = 0;
  }
- if (size) SAFE_HEAP_STORE(size | 0, info.size | 0, 4);
- if (type) SAFE_HEAP_STORE(type | 0, info.type | 0, 4);
+ if (size) HEAP32[size >> 2] = info.size;
+ if (type) HEAP32[type >> 2] = info.type;
 }
 function _emscripten_glDeleteObjectARB() {
  Module["printErr"]("missing function: emscripten_glDeleteObjectARB");
@@ -10057,13 +9946,13 @@ function _emscripten_glGenBuffers(n, buffers) {
   var buffer = GLctx.createBuffer();
   if (!buffer) {
    GL.recordError(1282);
-   while (i < n) SAFE_HEAP_STORE(buffers + i++ * 4 | 0, 0 | 0, 4);
+   while (i < n) HEAP32[buffers + i++ * 4 >> 2] = 0;
    return;
   }
   var id = GL.getNewId(GL.buffers);
   buffer.name = id;
   GL.buffers[id] = buffer;
-  SAFE_HEAP_STORE(buffers + i * 4 | 0, id | 0, 4);
+  HEAP32[buffers + i * 4 >> 2] = id;
  }
 }
 function _emscripten_glClearDepth(x0) {
@@ -10078,7 +9967,7 @@ function _pthread_key_create(key, destructor) {
  if (key == 0) {
   return ERRNO_CODES.EINVAL;
  }
- SAFE_HEAP_STORE(key | 0, PTHREAD_SPECIFIC_NEXT_KEY | 0, 4);
+ HEAP32[key >> 2] = PTHREAD_SPECIFIC_NEXT_KEY;
  PTHREAD_SPECIFIC[PTHREAD_SPECIFIC_NEXT_KEY] = 0;
  PTHREAD_SPECIFIC_NEXT_KEY++;
  return 0;
@@ -10194,11 +10083,11 @@ function ___buildEnvironment(env) {
   ENV["_"] = Module["thisProgram"];
   poolPtr = allocate(TOTAL_ENV_SIZE, "i8", ALLOC_STATIC);
   envPtr = allocate(MAX_ENV_VALUES * 4, "i8*", ALLOC_STATIC);
-  SAFE_HEAP_STORE(envPtr | 0, poolPtr | 0, 4);
-  SAFE_HEAP_STORE(_environ | 0, envPtr | 0, 4);
+  HEAP32[envPtr >> 2] = poolPtr;
+  HEAP32[_environ >> 2] = envPtr;
  } else {
-  envPtr = SAFE_HEAP_LOAD(_environ | 0, 4, 0) | 0;
-  poolPtr = SAFE_HEAP_LOAD(envPtr | 0, 4, 0) | 0;
+  envPtr = HEAP32[_environ >> 2];
+  poolPtr = HEAP32[envPtr >> 2];
  }
  var strings = [];
  var totalSize = 0;
@@ -10216,10 +10105,10 @@ function ___buildEnvironment(env) {
  for (var i = 0; i < strings.length; i++) {
   var line = strings[i];
   writeAsciiToMemory(line, poolPtr);
-  SAFE_HEAP_STORE(envPtr + i * ptrSize | 0, poolPtr | 0, 4);
+  HEAP32[envPtr + i * ptrSize >> 2] = poolPtr;
   poolPtr += line.length + 1;
  }
- SAFE_HEAP_STORE(envPtr + strings.length * ptrSize | 0, 0 | 0, 4);
+ HEAP32[envPtr + strings.length * ptrSize >> 2] = 0;
 }
 var ENV = {};
 function _getenv(name) {
@@ -10279,9 +10168,9 @@ function _emscripten_glGetShaderSource(shader, bufSize, length, source) {
  if (!result) return;
  if (bufSize > 0 && source) {
   var numBytesWrittenExclNull = stringToUTF8(result, source, bufSize);
-  if (length) SAFE_HEAP_STORE(length | 0, numBytesWrittenExclNull | 0, 4);
+  if (length) HEAP32[length >> 2] = numBytesWrittenExclNull;
  } else {
-  if (length) SAFE_HEAP_STORE(length | 0, 0 | 0, 4);
+  if (length) HEAP32[length >> 2] = 0;
  }
 }
 function _emscripten_set_gamepadconnected_callback(userData, useCapture, callbackfunc) {
@@ -10315,9 +10204,9 @@ function _glGetProgramInfoLog(program, maxLength, length, infoLog) {
  if (log === null) log = "(unknown error)";
  if (maxLength > 0 && infoLog) {
   var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
-  if (length) SAFE_HEAP_STORE(length | 0, numBytesWrittenExclNull | 0, 4);
+  if (length) HEAP32[length >> 2] = numBytesWrittenExclNull;
  } else {
-  if (length) SAFE_HEAP_STORE(length | 0, 0 | 0, 4);
+  if (length) HEAP32[length >> 2] = 0;
  }
 }
 function _emscripten_glUniform3fv(location, count, value) {
@@ -10329,9 +10218,9 @@ function _emscripten_glUniform3fv(location, count, value) {
  if (3 * count <= GL.MINI_TEMP_BUFFER_SIZE) {
   view = GL.miniTempBufferViews[3 * count - 1];
   for (var i = 0; i < 3 * count; i += 3) {
-   view[i] = Math_fround(SAFE_HEAP_LOAD_D(value + 4 * i | 0, 4, 0));
-   view[i + 1] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 4) | 0, 4, 0));
-   view[i + 2] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 8) | 0, 4, 0));
+   view[i] = HEAPF32[value + 4 * i >> 2];
+   view[i + 1] = HEAPF32[value + (4 * i + 4) >> 2];
+   view[i + 2] = HEAPF32[value + (4 * i + 8) >> 2];
   }
  } else {
   view = HEAPF32.subarray(value >> 2, value + count * 12 >> 2);
@@ -10417,9 +10306,9 @@ function _emscripten_glGetProgramInfoLog(program, maxLength, length, infoLog) {
  if (log === null) log = "(unknown error)";
  if (maxLength > 0 && infoLog) {
   var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
-  if (length) SAFE_HEAP_STORE(length | 0, numBytesWrittenExclNull | 0, 4);
+  if (length) HEAP32[length >> 2] = numBytesWrittenExclNull;
  } else {
-  if (length) SAFE_HEAP_STORE(length | 0, 0 | 0, 4);
+  if (length) HEAP32[length >> 2] = 0;
  }
 }
 function _emscripten_glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels) {
@@ -10461,22 +10350,22 @@ function _glUniformMatrix4fv(location, count, transpose, value) {
  if (16 * count <= GL.MINI_TEMP_BUFFER_SIZE) {
   view = GL.miniTempBufferViews[16 * count - 1];
   for (var i = 0; i < 16 * count; i += 16) {
-   view[i] = Math_fround(SAFE_HEAP_LOAD_D(value + 4 * i | 0, 4, 0));
-   view[i + 1] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 4) | 0, 4, 0));
-   view[i + 2] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 8) | 0, 4, 0));
-   view[i + 3] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 12) | 0, 4, 0));
-   view[i + 4] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 16) | 0, 4, 0));
-   view[i + 5] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 20) | 0, 4, 0));
-   view[i + 6] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 24) | 0, 4, 0));
-   view[i + 7] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 28) | 0, 4, 0));
-   view[i + 8] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 32) | 0, 4, 0));
-   view[i + 9] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 36) | 0, 4, 0));
-   view[i + 10] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 40) | 0, 4, 0));
-   view[i + 11] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 44) | 0, 4, 0));
-   view[i + 12] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 48) | 0, 4, 0));
-   view[i + 13] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 52) | 0, 4, 0));
-   view[i + 14] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 56) | 0, 4, 0));
-   view[i + 15] = Math_fround(SAFE_HEAP_LOAD_D(value + (4 * i + 60) | 0, 4, 0));
+   view[i] = HEAPF32[value + 4 * i >> 2];
+   view[i + 1] = HEAPF32[value + (4 * i + 4) >> 2];
+   view[i + 2] = HEAPF32[value + (4 * i + 8) >> 2];
+   view[i + 3] = HEAPF32[value + (4 * i + 12) >> 2];
+   view[i + 4] = HEAPF32[value + (4 * i + 16) >> 2];
+   view[i + 5] = HEAPF32[value + (4 * i + 20) >> 2];
+   view[i + 6] = HEAPF32[value + (4 * i + 24) >> 2];
+   view[i + 7] = HEAPF32[value + (4 * i + 28) >> 2];
+   view[i + 8] = HEAPF32[value + (4 * i + 32) >> 2];
+   view[i + 9] = HEAPF32[value + (4 * i + 36) >> 2];
+   view[i + 10] = HEAPF32[value + (4 * i + 40) >> 2];
+   view[i + 11] = HEAPF32[value + (4 * i + 44) >> 2];
+   view[i + 12] = HEAPF32[value + (4 * i + 48) >> 2];
+   view[i + 13] = HEAPF32[value + (4 * i + 52) >> 2];
+   view[i + 14] = HEAPF32[value + (4 * i + 56) >> 2];
+   view[i + 15] = HEAPF32[value + (4 * i + 60) >> 2];
   }
  } else {
   view = HEAPF32.subarray(value >> 2, value + count * 64 >> 2);
@@ -10505,7 +10394,7 @@ function _emscripten_glPixelStorei(pname, param) {
 }
 function _emscripten_glDeleteTextures(n, textures) {
  for (var i = 0; i < n; i++) {
-  var id = SAFE_HEAP_LOAD(textures + i * 4 | 0, 4, 0) | 0;
+  var id = HEAP32[textures + i * 4 >> 2];
   var texture = GL.textures[id];
   if (!texture) continue;
   GLctx.deleteTexture(texture);
@@ -10523,7 +10412,7 @@ function _emscripten_set_canvas_size(width, height) {
 function _emscripten_glDrawBuffers(n, bufs) {
  var bufArray = GL.tempFixedLengthArray[n];
  for (var i = 0; i < n; i++) {
-  bufArray[i] = SAFE_HEAP_LOAD(bufs + i * 4 | 0, 4, 0) | 0;
+  bufArray[i] = HEAP32[bufs + i * 4 >> 2];
  }
  GLctx["drawBuffers"](bufArray);
 }
@@ -10558,7 +10447,7 @@ function ___syscall221(which, varargs) {
    {
     var arg = SYSCALLS.get();
     var offset = 0;
-    SAFE_HEAP_STORE(arg + offset | 0, 2 | 0, 2);
+    HEAP16[arg + offset >> 1] = 2;
     return 0;
    }
   case 13:
@@ -10587,13 +10476,13 @@ function _emscripten_glGenVertexArrays(n, arrays) {
   var vao = GLctx["createVertexArray"]();
   if (!vao) {
    GL.recordError(1282);
-   while (i < n) SAFE_HEAP_STORE(arrays + i++ * 4 | 0, 0 | 0, 4);
+   while (i < n) HEAP32[arrays + i++ * 4 >> 2] = 0;
    return;
   }
   var id = GL.getNewId(GL.vaos);
   vao.name = id;
   GL.vaos[id] = vao;
-  SAFE_HEAP_STORE(arrays + i * 4 | 0, id | 0, 4);
+  HEAP32[arrays + i * 4 >> 2] = id;
  }
 }
 function _emscripten_glGetBooleanv(name_, p) {
@@ -11090,9 +10979,6 @@ Module.asmLibraryArg = {
  "enlargeMemory": enlargeMemory,
  "getTotalMemory": getTotalMemory,
  "abortOnCannotGrowMemory": abortOnCannotGrowMemory,
- "segfault": segfault,
- "alignfault": alignfault,
- "ftfault": ftfault,
  "invoke_iiiiiiii": invoke_iiiiiiii,
  "invoke_iiiiiid": invoke_iiiiiid,
  "invoke_vffff": invoke_vffff,
@@ -11490,9 +11376,6 @@ var _main = Module["_main"] = (function() {
 var stackSave = Module["stackSave"] = (function() {
  return Module["asm"]["stackSave"].apply(null, arguments);
 });
-var setDynamicTop = Module["setDynamicTop"] = (function() {
- return Module["asm"]["setDynamicTop"].apply(null, arguments);
-});
 var setThrew = Module["setThrew"] = (function() {
  return Module["asm"]["setThrew"].apply(null, arguments);
 });
@@ -11722,7 +11605,6 @@ Runtime.stackAlloc = Module["stackAlloc"];
 Runtime.stackSave = Module["stackSave"];
 Runtime.stackRestore = Module["stackRestore"];
 Runtime.establishStackSpace = Module["establishStackSpace"];
-Runtime.setDynamicTop = Module["setDynamicTop"];
 Runtime.setTempRet0 = Module["setTempRet0"];
 Runtime.getTempRet0 = Module["getTempRet0"];
 Module["asm"] = asm;
