@@ -10,18 +10,6 @@ The demo can be found in: http://isc30.github.io/wasm-pong/demo/
 
 The project consists on multiple parts glued together:
 
-### SDL2
-
-* 2D renderer (software)
-* IO (input, filesystem, etc)
-* Window (context) management
-* Resource loading (images, audio, etc)
-
-### WebGL 2.0
-
-* 3D renderer (hardware accelerated)
-* Wrapper for OpenGL ES 3.0
-
 ### Emscripten
 
 * C++14 compiler to WebAssembly
@@ -29,6 +17,18 @@ The project consists on multiple parts glued together:
 * Virtual filesystem
   * On-demand resource loading over the network
   * File bundler (RAM)
+
+### WebGL 2.0
+
+* 3D renderer (hardware accelerated)
+* Wrapper for OpenGL ES 3.0
+
+### SDL2
+
+* 2D renderer (software)
+* IO (input, filesystem, etc)
+* Window (context) management
+* Resource loading (images, audio, etc)
 
 ### Custom (own)
 
