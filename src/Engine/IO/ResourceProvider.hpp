@@ -24,7 +24,7 @@ namespace isc
         {
             std::cout << "file ok: " << file << std::endl;
             _files.remove(file);
-            complete = _files.size();
+            complete = _files.size() == 0;
         }
 
         void onError(const char* file)
@@ -36,9 +36,9 @@ namespace isc
 
         void prepare()
         {
-            std::vector<std::string> buffer = { std::begin(_files), std::end(_files) };
+            std::vector<std::string> cache = { std::begin(_files), std::end(_files) };
 
-            for (const std::string& file : buffer)
+            for (const std::string& file : cache)
             {
                 emscripten::prepareFile(
                     file.c_str(),

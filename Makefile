@@ -10,15 +10,15 @@ SOURCES := $(call rwildcard,$(SRC_DIR),*.cpp)
 OBJECTS := $(patsubst %.cpp, %.o, $(SOURCES))
 
 all:
-	$(error Available targets: clang, wasm)
+	$(error Use GNU (cmder) console. Available targets: wasm)
 
-set-g++:
-	$(eval LDFLAGS := -lstdc++)
-	$(eval TARGETFLAGS := )
-	$(eval CXX := g++ -x c++)
-	$(eval CXXFLAGS := -std=c++11 $(LDFLAGS) $(TARGETFLAGS))
-	$(eval TARGET := g++)
-	$(eval OUTFILE := $(PROJECT_NAME).exe)
+#set-g++:
+#	$(eval LDFLAGS := -lstdc++)
+#	$(eval TARGETFLAGS := )
+#	$(eval CXX := g++ -x c++)
+#	$(eval CXXFLAGS := -std=c++11 $(LDFLAGS) $(TARGETFLAGS))
+#	$(eval TARGET := g++)
+#	$(eval OUTFILE := $(PROJECT_NAME).exe)
 	
 set-wasm:
 	$(eval LIBRARIES := -I ./externals/glm)
@@ -37,7 +37,7 @@ compile: $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $^ -o $(BUILD_DIR)/$(TARGET)/$(OUTFILE)
 	rm -rf $^
 	
-g++: clean set-g++ compile
+#g++: clean set-g++ compile
 wasm: clean set-wasm compile
 
 show-vars:
