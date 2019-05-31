@@ -33,7 +33,11 @@ namespace isc
 
         virtual bool handleEvent(const SDL_Event& event);
 
+        void toggleFullScreen(bool borderless) noexcept;
         void requestFullScreen(bool borderless) noexcept;
+        void requestWindowed(bool borderless) noexcept;
+        bool isFullScreen() const noexcept;
+
         void swap();
 
     protected:

@@ -81,6 +81,18 @@ namespace isc
         SDL_GL_SetSwapInterval(0);
     }
 
+    void Window::toggleFullScreen(bool borderless) noexcept
+    {
+        if (isFullScreen())
+        {
+            requestWindowed(borderless);
+        }
+        else
+        {
+            requestFullScreen(borderless);
+        }
+    }
+
     void Window::requestFullScreen(bool borderless) noexcept
     {
         auto flag = borderless
@@ -88,6 +100,18 @@ namespace isc
             : SDL_WINDOW_FULLSCREEN;
 
         SDL_SetWindowFullscreen(_window.get(), flag);
+    }
+
+    void Window::requestWindowed(bool borderless) noexcept
+    {
+        SDL_SetWindowFullscreen(_window.get(), 0);
+    }
+
+    bool Window::isFullScreen() const noexcept
+    {
+        SDL_WindowFlags flags = static_cast<SDL_WindowFlags>(SDL_GetWindowFlags(_window.get()));
+
+        return (flags & SDL_WINDOW_FULLSCREEN) == SDL_WINDOW_FULLSCREEN;
     }
 
     bool Window::handleEvent(const SDL_Event& event)

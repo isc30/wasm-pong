@@ -83,7 +83,7 @@ inline void new2dLayer()
     GL(glClear(GL_DEPTH_BUFFER_BIT));
 }
 
-renderable prepareQuad()
+renderable prepareFramebufferQuad()
 {
     renderable quad;
 
@@ -296,24 +296,24 @@ std::tuple<SDL_Renderer*, SDL_Surface*> createSurfaceRenderer(const isc::vec2<ui
 struct GameLoop
 {
     isc::Window window;
-    SDL_Renderer* renderer;
-    SDL_Surface* surface;
+    SDL_Renderer* renderer = nullptr;
+    SDL_Surface* surface = nullptr;
     isc::UpdateProfiler profiler;
     isc::ResourceProvider resourceProvider;
 
     nonstd::optional<isc::vec2<float>> touchLocation;
 
-    renderable quad;
+    renderable framebufferQuad;
     renderable triangle;
     renderable cube;
 
-    GameLoop()
+    explicit GameLoop()
     {
         window.create("Pong", { 640, 480 });
 
         std::tie(renderer, surface) = createSurfaceRenderer(window.getSize());
 
-        quad = prepareQuad();
+        framebufferQuad = prepareFramebufferQuad();
         triangle = prepareTriangle();
         cube = prepareCube();
 
@@ -348,8 +348,6 @@ struct GameLoop
             std::cout << "ALL LOADED" << std::endl;
         }
 
-        profiler.update(deltaTime);
-
         SDL_Event event;
 
         while (isc::sdl::EventQueue::poll(event))
@@ -372,7 +370,7 @@ struct GameLoop
 
                     if (event.key.keysym.sym == SDLK_f)
                     {
-                        window.requestFullScreen(false);
+                        window.toggleFullScreen(false);
                     }
 
                     break;
@@ -469,10 +467,13 @@ struct GameLoop
         SDL_SetRenderDrawColor(renderer, 255, 215, 0, 255);
         SDL_RenderDrawLine(renderer, 0, window.getSize().y, window.getSize().x, 0);
 
+        // Render 2D framebuffer
+        /////////////////////////////////////////////////////////////////////////////////////////
+
         usingSurfaceTexture(surface, [&]()
         {
             new2dLayer();
-            quad.render();
+            framebufferQuad.render();
         });
 
         window.swap();
@@ -480,6 +481,8 @@ struct GameLoop
 
     bool loop(DeltaTime deltaTime)
     {
+        profiler.update(deltaTime);
+
         render(deltaTime);
 
         return update(deltaTime);;

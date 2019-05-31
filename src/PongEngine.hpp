@@ -13,7 +13,9 @@ struct PongEngine
     SDL_Renderer* renderer;
     SDL_Surface* surface;
 
-    PongEngine()
+    explicit PongEngine()
+        : renderer{nullptr}
+        , surface{nullptr}
     {
         window.create("Pong", { 640, 480 });
     }
